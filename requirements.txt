@@ -1,0 +1,11 @@
+pytest
+pytest-mock
+requests
+flask 
+flask-smorest
+python-dotenv
+marshmallow
+flask-sqlalchemy
+flask-jwt-extended
+passlib
+redis

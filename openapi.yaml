@@ -1,0 +1,623 @@
+components:
+  responses:
+    DEFAULT_ERROR:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Default error response
+    UNPROCESSABLE_ENTITY:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Unprocessable Entity
+  schemas:
+    Book:
+      properties:
+        active:
+          enum:
+          - 0
+          - 1
+          type: integer
+        added_at:
+          type: string
+        bookmarked:
+          enum:
+          - 0
+          - 1
+          type: integer
+        completed:
+          enum:
+          - 0
+          - 1
+          type: integer
+        file_url:
+          format: url
+          readOnly: true
+          type: string
+        link_id:
+          readOnly: true
+          type: string
+        release_year:
+          type: integer
+        tags:
+          items:
+            $ref: '#/components/schemas/PlainTag'
+          readOnly: true
+          type: array
+        title:
+          type: string
+      required:
+      - added_at
+      - title
+      type: object
+    BookUpdate:
+      properties:
+        active:
+          enum:
+          - 0
+          - 1
+          type: integer
+        bookmarked:
+          enum:
+          - 0
+          - 1
+          type: integer
+        completed:
+          enum:
+          - 0
+          - 1
+          type: integer
+        release_year:
+          type: integer
+        title:
+          type: string
+      type: object
+    Error:
+      properties:
+        code:
+          description: Error code
+          type: integer
+        errors:
+          description: Errors
+          type: object
+        message:
+          description: Error message
+          type: string
+        status:
+          description: Error name
+          type: string
+      type: object
+    MultipartFile:
+      properties:
+        file: {}
+      required:
+      - file
+      type: object
+    PaginationMetadata:
+      properties:
+        first_page:
+          type: integer
+        last_page:
+          type: integer
+        next_page:
+          type: integer
+        page:
+          type: integer
+        previous_page:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+      type: object
+    PlainBook:
+      properties:
+        active:
+          enum:
+          - 0
+          - 1
+          type: integer
+        added_at:
+          type: string
+        bookmarked:
+          enum:
+          - 0
+          - 1
+          type: integer
+        completed:
+          enum:
+          - 0
+          - 1
+          type: integer
+        file_url:
+          format: url
+          readOnly: true
+          type: string
+        link_id:
+          readOnly: true
+          type: string
+        release_year:
+          type: integer
+        title:
+          type: string
+      required:
+      - added_at
+      - title
+      type: object
+    PlainTag:
+      properties:
+        link_id:
+          readOnly: true
+          type: string
+        tag:
+          type: string
+      required:
+      - tag
+      type: object
+    PlainUser:
+      properties:
+        email:
+          format: email
+          type: string
+        link_id:
+          readOnly: true
+          type: string
+        user_name:
+          type: string
+      required:
+      - email
+      - user_name
+      type: object
+    Tag:
+      properties:
+        books:
+          items:
+            $ref: '#/components/schemas/PlainBook'
+          readOnly: true
+          type: array
+        link_id:
+          readOnly: true
+          type: string
+        tag:
+          type: string
+      required:
+      - tag
+      type: object
+    TagUpdate:
+      properties:
+        tag:
+          type: string
+      type: object
+    User:
+      properties:
+        email:
+          format: email
+          type: string
+        link_id:
+          readOnly: true
+          type: string
+        user_name:
+          type: string
+        user_password:
+          type: string
+      required:
+      - email
+      - user_name
+      - user_password
+      type: object
+    UserUpdate:
+      properties:
+        email:
+          format: email
+          type: string
+        user_password:
+          type: string
+      required:
+      - email
+      - user_password
+      type: object
+info:
+  title: Alexandria API
+  version: v1
+openapi: 3.0.3
+paths:
+  /book/{book_id}:
+    delete:
+      responses:
+        '202':
+          description: accepted - book deleted
+        '404':
+          description: book not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: delete book
+      tags:
+      - Books
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+          description: OK
+        '404':
+          description: book not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: list single book
+      tags:
+      - Books
+    parameters:
+    - in: path
+      name: book_id
+      required: true
+      schema:
+        minLength: 1
+        type: string
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdate'
+        required: true
+      responses:
+        '204':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+          description: success, no content - tag modified
+        '404':
+          description: book not found
+        '409':
+          description: database constraint violation
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: modify book
+      tags:
+      - Books
+  /book/{book_id}/file:
+    get:
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: book not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: get book file
+      tags:
+      - Books
+    parameters:
+    - in: path
+      name: book_id
+      required: true
+      schema:
+        minLength: 1
+        type: string
+  /book/{book_id}/tag/{tag_id}:
+    delete:
+      responses:
+        '202':
+          description: accepted - book tag relation deleted
+        '404':
+          description: no relation found for book and tag
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: delete relation between book and tag
+      tags:
+      - Books
+    parameters:
+    - in: path
+      name: tag_id
+      required: true
+      schema:
+        minLength: 1
+        type: string
+    - in: path
+      name: book_id
+      required: true
+      schema:
+        minLength: 1
+        type: string
+    post:
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+          description: created - book tag relation created
+        '404':
+          description: tag not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: create relation between book and tag
+      tags:
+      - Books
+  /books:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Book'
+                type: array
+          description: OK
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: list multiple books
+      tags:
+      - Books
+    post:
+      parameters:
+      - in: formData
+        name: title
+        required: true
+        schema:
+          type: string
+      - in: formData
+        name: added_at
+        required: true
+        schema:
+          type: string
+      - in: formData
+        name: release_year
+        required: false
+        schema:
+          type: integer
+      - in: formData
+        name: completed
+        required: false
+        schema:
+          enum:
+          - 0
+          - 1
+          type: integer
+      - in: formData
+        name: bookmarked
+        required: false
+        schema:
+          enum:
+          - 0
+          - 1
+          type: integer
+      - in: formData
+        name: active
+        required: false
+        schema:
+          enum:
+          - 0
+          - 1
+          type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartFile'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+          description: created - book created
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: create book
+      tags:
+      - Books
+  /tag/{tag_id}:
+    delete:
+      responses:
+        '202':
+          description: accepted - tag deleted
+        '404':
+          description: tag not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: delete tag
+      tags:
+      - Tags
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: success - tag found
+        '404':
+          description: tag not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: list single tag
+      tags:
+      - Tags
+    parameters:
+    - in: path
+      name: tag_id
+      required: true
+      schema:
+        minLength: 1
+        type: string
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagUpdate'
+        required: true
+      responses:
+        '204':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: success, no content - tag modified
+        '404':
+          description: tag not found
+        '409':
+          description: database constraint violation
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: modify tag
+      tags:
+      - Tags
+  /tags:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Tag'
+                type: array
+          description: success - tags found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: list multiple tags
+      tags:
+      - Tags
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlainTag'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: created - tag created
+        '409':
+          description: database constraint violation
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: add tag
+      tags:
+      - Tags
+  /user/{user_id}:
+    delete:
+      responses:
+        '202':
+          description: accepted - user deleted
+        '404':
+          description: user not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: delete user
+      tags:
+      - Users
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlainUser'
+          description: success - user found
+        '404':
+          description: user not found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: list single user
+      tags:
+      - Users
+    parameters:
+    - in: path
+      name: user_id
+      required: true
+      schema:
+        minLength: 1
+        type: string
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+        required: true
+      responses:
+        '204':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlainUser'
+          description: success, no content - user modified
+        '404':
+          description: user not found
+        '409':
+          description: error, database constraint violation occured
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: modify user
+      tags:
+      - Users
+  /users:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/PlainUser'
+                type: array
+          description: success - users found
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: list multiple users
+      tags:
+      - Users
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlainUser'
+          description: created - user created
+        '409':
+          description: error, database constraint violation occured
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: create user
+      tags:
+      - Users
+tags:
+- description: Book resource
+  name: Books
+- description: User resource
+  name: Users
+- description: Tag resource
+  name: Tags
