@@ -1,9 +1,10 @@
+from dotenv import load_dotenv
+from os import getenv
 from flask import Flask, jsonify
 from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 from db import db
 from blocklist import BLOCKED_JWT
-#import models                                       # executes __ini__.py
 
 from resources.book import blp as BookBlueprint
 from resources.user import blp as UserBlueprint
@@ -14,6 +15,8 @@ def create_app(development_db = None):
 
     app = Flask(__name__)
 
+    load_dotenv()
+
     app.config["PROPAGATE_EXCEPTIONS"] = True
     app.config["API_TITLE"] = "Alexandria API"
     app.config["API_VERSION"] = "v1"
@@ -21,11 +24,11 @@ def create_app(development_db = None):
     app.config["OPENAPI_URL_PREFIX"] = "/documentation"
     app.config["OPENAPI_SWAGGER_UI_PATH"] = "/openapi"
     app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@3.25.x/"
-    app.config["SQLALCHEMY_DATABASE_URI"] = development_db or "sqlite:///alexandria.db"
+    app.config["SQLALCHEMY_DATABASE_URI"] = development_db or getenv("DATABASE")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["UPLOAD_FOLDER"] = "/home/patrick/Programming/alexandria/tempfiles" #TODO: modify, delete if upload without temporary file works
 
-    app.config["JWT_SECRET_KEY"] = "326160918212406905516007986030749400780"       # used to sign JWT, confirms generation by this app, is not encryption, against tampering
+    app.config["JWT_SECRET_KEY"] = getenv("JWT_SECRET_KEY")                        # used to sign JWT, confirms generation by this app, is not encryption, against tampering
                                                                                    # secrets.SystemRandom().getrandbits(128) 
 
 

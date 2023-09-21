@@ -2,11 +2,12 @@ from flask.views import MethodView
 from flask_smorest import * #Blueprint, abort
 from flask_smorest.fields import Upload
 from flask_jwt_extended import jwt_required
-from schemas import BookSchema, BookUpdateSchema, BooktagSchema, PlainBookSchema, MultipartFileSchema
+from schemas import BookSchema, BookUpdateSchema, PlainBookSchema, MultipartFileSchema, BookSearchQueryArgs #BooktagSchema
 from werkzeug.utils import secure_filename
 from models import BookModel, TagModel
 from db import db
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+import sqlalchemy.sql as sql
 import link_id as lid
 
 # todo: replace aws
@@ -18,6 +19,12 @@ from flask import send_from_directory
 
 
 blp = Blueprint("Books", __name__, description="Book resource")
+blp.DEFAULT_PAGINATION_PARAMETERS = {"page": 1, "page_size": 15, "max_page_size": 100}
+
+class CursorPage(Page):
+    @property
+    def item_count(self):
+        return self.collection.count()
 
 @blp.route("/book/<string:book_id>")
 class Book(MethodView):
@@ -52,7 +59,7 @@ class Book(MethodView):
 
         return {"code": 200,"message": "book deleted successfully"}
     
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.arguments(BookUpdateSchema)
     @blp.response(204, BookSchema,  description="success, no content - tag modified")
     @blp.alt_response(409, description="database constraint violation")
@@ -72,7 +79,7 @@ class Book(MethodView):
                 db.session.add(book)
                 db.session.commit()
             except IntegrityError:
-                abort(409, message="error, database constraint violation occured")      # TODO: add more info, justify 409
+                abort(409, message="error, database constraint violation occured")      
             except SQLAlchemyError:
                 abort(500, message="error occured during tag insertion")
 
@@ -81,6 +88,7 @@ class Book(MethodView):
 
         return book
 
+# TODO: COMPLETE
 @blp.route("/book/<string:book_id>/file")
 class BookFile(MethodView):
     @jwt_required()
@@ -106,14 +114,39 @@ class BookFile(MethodView):
 
 @blp.route("/books")
 class BookList(MethodView):
-    @jwt_required()
+   # @jwt_required() RE ENABLE
+    #@blp.arguments(Book)
+    @blp.arguments(BookSearchQueryArgs, location="query")
     @blp.response(200, BookSchema(many=True))
-    def get(self):
+    @blp.paginate(CursorPage)
+    def get(self, search_values):
         """list multiple books"""
-        return BookModel.query.all()
+        #return BookModel.query.all()
+        print(search_values)            # TODO: remove
+
+        title = search_values.get("title")
+        release_year = search_values.get("release_year")
+        sort = search_values.get("sort")
+        order = search_values.get("order")
+
+        result = BookModel.query            
+
+        if title:
+            result = result.filter(BookModel.title.contains(search_values.get("title")))        # TODO: simplify by not calling .get() again ??? (also in other files)
+        if release_year:
+            result = result.filter(BookModel.release_year.contains(search_values.get("release_year")))
+
+        if sort in ["release_year", "title"] and order in ["asc", "desc"]:
+            if order == "asc":
+                result = result.order_by(sql.asc(sort))
+            else: 
+                result = result.order_by(sql.desc(sort))
+
+        return result
+
     
     #@blp.arguments(PlainBookSchema)
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True) RE ENABLE
     @blp.arguments(PlainBookSchema, location="form")
     @blp.arguments(MultipartFileSchema, location="files")
     @blp.response(201, BookSchema, description="created - book created")
@@ -226,9 +259,6 @@ class BookList(MethodView):
 
         exit()
 
-        #TODO: use ideal python path functions, clean up & error handling
-        #TODO: use app.config['UPLOAD_FOLDER']
-
         base_dir = "/home/patrick/Programming/alexandria/tempfiles"   # replace with variable maybe
         book_path = os.path.join(base_dir, secure_filename(book_file.filename))
         comp_book_path = book_path + '.gz'
@@ -254,7 +284,7 @@ class BookList(MethodView):
 
         '''
 
-        book_data["link_id"] = lid.get_lid_temp()
+        book_data["link_id"] = lid.get_link_id()
         book_data["file_url"] = comp_book_path
         book = BookModel(**book_data)
 
@@ -269,10 +299,9 @@ class BookList(MethodView):
         return book
 
 
-#TODO: REDUCE BOOKS PARAMETER SIZE IN TAG OUTPUT ? (nested)
 @blp.route("/book/<string:book_id>/tag/<string:tag_id>")
 class BookTags(MethodView):
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.response(201, BookSchema, description="created - book tag relation created")
     @blp.alt_response(404, description="book not found")
     @blp.alt_response(404, description="tag not found")

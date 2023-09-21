@@ -9,3 +9,4 @@ flask-sqlalchemy
 flask-jwt-extended
 passlib
 redis
+crockford32

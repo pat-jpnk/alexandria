@@ -1,0 +1,1 @@
+flask openapi write --format yaml openapi.yaml

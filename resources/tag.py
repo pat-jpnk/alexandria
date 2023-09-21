@@ -1,7 +1,7 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from flask_jwt_extended import jwt_required
-from schemas import TagSchema, TagUpdateSchema, PlainTagSchema
+from schemas import TagSchema, TagUpdateSchema, PlainTagSchema, TagSearchQueryArgs
 from models import TagModel
 from db import db
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -9,9 +9,6 @@ import link_id as lid
 
 blp = Blueprint("Tags", __name__, description="Tag resource")
 
-# raise NotImplementedError("XYZ is not implemented yet")
-
-# idempotent request - same state for one or more requests
 
 @blp.route("/tag/<string:tag_id>")
 class Tag(MethodView):
@@ -37,7 +34,7 @@ class Tag(MethodView):
 
     #https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html#deleting-rows-from-the-many-to-many-table
     
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.response(202, description="accepted - tag deleted")
     @blp.alt_response(404, description="tag not found")
     def delete(self, tag_id):
@@ -46,8 +43,6 @@ class Tag(MethodView):
 
         if tag:
             try:
-                #for association in tag.books:
-                #    db.session.delete(association)
                 db.session.delete(tag)
                 db.session.commit()
             except SQLAlchemyError:
@@ -91,11 +86,19 @@ class Tag(MethodView):
 
 @blp.route("/tags")
 class TagList(MethodView):
-    @jwt_required()
+   # @jwt_required() RE ENABLE
+    @blp.arguments(TagSearchQueryArgs, location="query")
     @blp.response(200, TagSchema(many=True),  description="success - tags found")
-    def get(self):
+    def get(self, search_value):
         """list multiple tags"""
-        return TagModel.query.all()
+
+        name = search_value.get("name")
+        result = TagModel.query
+
+        if name:
+            result = result.filter(TagModel.tag.contains(search_value.get("name")))
+
+        return result
         
     @jwt_required(fresh=True)
     @blp.arguments(PlainTagSchema)
@@ -103,7 +106,7 @@ class TagList(MethodView):
     @blp.alt_response(409, description="database constraint violation")
     def post(self, tag_data):
         """add tag"""
-        tag_data["link_id"] = lid.get_lid_temp()
+        tag_data["link_id"] = lid.get_link_id()
         tag = TagModel(**tag_data)      # turn dict into keyword arguments
 
         try:

@@ -2,7 +2,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, jwt_required, get_jwt
 from blocklist import BLOCKED_JWT
-from schemas import UserSchema, UserUpdateSchema, PlainUserSchema, UserLoginSchema
+from schemas import UserSchema, UserUpdateSchema, PlainUserSchema, UserLoginSchema, UserSearchQueryArgs
 from models import UserModel
 from db import db
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -16,12 +16,12 @@ class UserLogin(MethodView):
     @blp.arguments(UserLoginSchema)
     @blp.alt_response(401, description="error, invalid login credentials")
     def post(self, user_data):
+        """login user"""
         user = UserModel.query.filter(UserModel.user_name == user_data["user_name"]).first()
 
         if user and pbkdf2_sha256.verify(user_data["user_password"], user.user_password):
             access_token = create_access_token(identity=user.id, fresh=True)                           # use regular id?
             refresh_token = create_refresh_token(identity=user.id)
-            BLOCKED_JWT.add(get_jwt().get("jti"))
             return {"access_token": access_token, "refresh_token": refresh_token}
     
         abort(401, message="invalid login credentials")    
@@ -31,14 +31,18 @@ class UserLogin(MethodView):
 class LoginRefresh(MethodView):
     @jwt_required(refresh=True)
     def post(self):
+        """refresh JWT"""
         current_user = get_jwt_identity()   # return "sub" claim
         new_token = create_access_token(identity=current_user, fresh=False)
+        jti = get_jwt().get("jti")
+        BLOCKED_JWT.add(jti)
         return {"access_token": new_token}
 
 @blp.route("/logout") 
 class UserLogout(MethodView):
     @jwt_required()
     def post(self):
+        """logout user"""
         jti = get_jwt()["jti"]
         BLOCKED_JWT.add(jti)
         return {"message:": "successfully logged out"}
@@ -54,7 +58,7 @@ class UserRegister(MethodView):
         if UserModel.query.filter(UserModel.user_name == user_data["user_name"]).first():
             abort(409, message="duplicate username")
 
-        user_data["link_id"] = lid.get_lid_temp()
+        user_data["link_id"] = lid.get_link_id()
         user = UserModel(**user_data)
         
         user = UserModel (
@@ -133,8 +137,16 @@ class User(MethodView):
 
 @blp.route("/users")
 class UserList(MethodView):
-    @jwt_required()
+    #@jwt_required()
+    @blp.arguments(UserSearchQueryArgs, location="query")
     @blp.response(200, PlainUserSchema(many=True), description="success - users found")
-    def get(self):
+    def get(self, search_value):
         """list multiple users"""
-        return UserModel.query.all()
+
+        name = search_value.get("name")
+        result = UserModel.query
+
+        if name:
+            result = result.filter(UserModel.user_name.contains(search_value.get("name")))
+
+        return result

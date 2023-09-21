@@ -1,4 +1,9 @@
 components:
+  headers:
+    PAGINATION:
+      description: Pagination metadata
+      schema:
+        $ref: '#/components/schemas/PaginationMetadata'
   responses:
     DEFAULT_ERROR:
       content:
@@ -202,8 +207,20 @@ components:
           type: string
         user_password:
           type: string
+          writeOnly: true
       required:
       - email
+      - user_name
+      - user_password
+      type: object
+    UserLogin:
+      properties:
+        user_name:
+          type: string
+        user_password:
+          type: string
+          writeOnly: true
+      required:
       - user_name
       - user_password
       type: object
@@ -214,6 +231,7 @@ components:
           type: string
         user_password:
           type: string
+          writeOnly: true
       required:
       - email
       - user_password
@@ -343,6 +361,42 @@ paths:
       - Books
   /books:
     get:
+      parameters:
+      - in: query
+        name: title
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: release_year
+        required: false
+        schema:
+          type: integer
+      - in: query
+        name: sort
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: order
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          minimum: 1
+          type: integer
+      - in: query
+        name: page_size
+        required: false
+        schema:
+          default: 15
+          maximum: 100
+          minimum: 1
+          type: integer
       responses:
         '200':
           content:
@@ -352,12 +406,28 @@ paths:
                   $ref: '#/components/schemas/Book'
                 type: array
           description: OK
+          headers:
+            X-Pagination:
+              $ref: '#/components/headers/PAGINATION'
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
         default:
           $ref: '#/components/responses/DEFAULT_ERROR'
       summary: list multiple books
       tags:
       - Books
     post:
+      description: '- somehow compresss bytestream instead of file
+
+
+        - upload bytes using s3 put_object
+
+
+        https://www.learnaws.org/2022/08/22/boto3-s3-upload_file-vs-put-object/
+
+        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/put_object.html
+
+        https://saturncloud.io/blog/flask-upload-image-to-s3-without-saving-to-local-file-system/'
       parameters:
       - in: formData
         name: title
@@ -415,9 +485,70 @@ paths:
           $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
         default:
           $ref: '#/components/responses/DEFAULT_ERROR'
-      summary: create book
+      summary: '- compress before upload, no S3 feature
+
+        - use book_file.read() to get byte stream of <class ''werkzeug.datastructures.FileStorage''>
+        for upload without saving'
       tags:
       - Books
+  /login:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+        required: true
+      responses:
+        '401':
+          description: error, invalid login credentials
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: login user
+      tags:
+      - Users
+  /logout:
+    post:
+      responses:
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: logout user
+      tags:
+      - Users
+  /refresh:
+    post:
+      responses:
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: refresh JWT
+      tags:
+      - Users
+  /register:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlainUser'
+          description: created - user created
+        '409':
+          description: error, database constraint violation occured
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      summary: register user
+      tags:
+      - Users
   /tag/{tag_id}:
     delete:
       responses:
@@ -479,6 +610,12 @@ paths:
       - Tags
   /tags:
     get:
+      parameters:
+      - in: query
+        name: name
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -488,6 +625,8 @@ paths:
                   $ref: '#/components/schemas/Tag'
                 type: array
           description: success - tags found
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
         default:
           $ref: '#/components/responses/DEFAULT_ERROR'
       summary: list multiple tags
@@ -577,6 +716,12 @@ paths:
       - Users
   /users:
     get:
+      parameters:
+      - in: query
+        name: name
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -586,32 +731,11 @@ paths:
                   $ref: '#/components/schemas/PlainUser'
                 type: array
           description: success - users found
-        default:
-          $ref: '#/components/responses/DEFAULT_ERROR'
-      summary: list multiple users
-      tags:
-      - Users
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-        required: true
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlainUser'
-          description: created - user created
-        '409':
-          description: error, database constraint violation occured
         '422':
           $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
         default:
           $ref: '#/components/responses/DEFAULT_ERROR'
-      summary: create user
+      summary: list multiple users
       tags:
       - Users
 tags:

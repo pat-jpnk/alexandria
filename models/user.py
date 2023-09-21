@@ -1,7 +1,7 @@
 from db import db
 
 
-class UserModel(db.Model):              # mapping of row in table to python class
+class UserModel(db.Model):            
     __tablename__ = "Users"
     id = db.Column(db.Integer, primary_key=True)
     link_id = db.Column(db.String(128), unique=True, nullable=False)
