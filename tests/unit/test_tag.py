@@ -1,24 +1,8 @@
 import pytest
 import requests
-from assertion import assert_status_code
+from test_utils import SCHEME, DOMAIN, PORT, api_session, assert_status_code
 
 # TODO: create test_DB script with test user for authentication
-
-SCHEME = "http://"
-DOMAIN = "127.0.0.1"
-PORT = ":5000" 
-
-@pytest.fixture(scope="session")
-def api_session():
-    path = "/login"
-    url = SCHEME + DOMAIN + PORT + path
-    params = {"user_name": "testUser", "user_password": "testPassword"}
-    response = requests.post(url, json=params)
-    assert_status_code(response, 200)
-    session = requests.Session()
-    session.headers.update({"Authorization": "Bearer {}".format(response.json().get("access_token"))})
-    yield session
-
 
 def pytest_namespace():
     return {"tag_id": None}
@@ -29,7 +13,7 @@ def pytest_namespace():
 def test_add_tag(api_session):
     path = "/tags"
     url = SCHEME + DOMAIN + PORT + path
-    params = {"tag": "tag1"}    
+    params = {"tag": "tag100"}    
     #response = requests.post(url, json=params)
     response = api_session.post(url, json=params)
     assert_status_code(response, 201)

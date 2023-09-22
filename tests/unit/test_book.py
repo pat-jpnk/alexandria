@@ -1,17 +1,10 @@
-import pytest 
+import pytest
 import requests
+from test_utils import SCHEME, DOMAIN, PORT, api_session, assert_status_code
 
+SCHEME = "http://"
 DOMAIN = "127.0.0.1"
+PORT = ":5000" 
 
-
-
-if __name__ == "__main__":   
-    # Making a GET request
-    r = requests.get('https://api.github.com/users/naveenkrnl')
-    
-    # check status code for response received
-    # success code - 200
-    print(r)
-    
-    # print content of request
-    print(r.content)
+def pytest_namespace():
+    return {"book_id": None}
