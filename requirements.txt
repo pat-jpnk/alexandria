@@ -1,5 +1,7 @@
 pytest
 pytest-mock
+pytest-dependency
+pylint
 requests
 flask 
 flask-smorest

@@ -12,7 +12,7 @@ blp = Blueprint("Tags", __name__, description="Tag resource")
 
 @blp.route("/tag/<string:tag_id>")
 class Tag(MethodView):
-    @jwt_required()
+    #@jwt_required()
     @blp.response(200, TagSchema, description="success - tag found")
     @blp.alt_response(404, description="tag not found")
     def get(self, tag_id):
@@ -52,7 +52,7 @@ class Tag(MethodView):
 
         return {"code": 200,"message": "tag deleted successfully"}
 
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.arguments(TagUpdateSchema)
     @blp.response(204, TagSchema,  description="success, no content - tag modified")
     @blp.alt_response(409, description="database constraint violation")
@@ -63,6 +63,7 @@ class Tag(MethodView):
       
         tag = TagModel.query.filter_by(link_id = tag_id).first()  
         if tag:                                             # then the request is not idempotent anymore
+            print(tag_data) # TODO: remove
             tag.tag = tag_data["tag"]
 
             try:

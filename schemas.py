@@ -47,13 +47,6 @@ class UserUpdateSchema(Schema):
 class UserLoginSchema(Schema):
     user_name = fields.Str(required=True)
     user_password = fields.Str(required=True, load_only=True)               
-
-'''
-class BooktagSchema(Schema):
-    message = fields.Str()
-    book = fields.Nested(PlainBookSchema)
-    tag = fields.Nested(PlainTagSchema)
-'''
     
 class MultipartFileSchema(Schema):
     file = fields.Raw(required=True)                     # metadata={"type": "file"}
