@@ -23,9 +23,6 @@ class Tag(MethodView):
             abort(404, message="tag not found")
 
         return tag
-    
-    # TODO: read docs about extra decorator fields
-    # INFO: Deleting tag cascade deletes all related fields in Booktags table
 
     # INFO: SQLAlchemy gives error when trying to delete entity from many-to-many relationship: 
     # example: AssertionError: Dependency rule tried to blank-out primary key column 'cart_products_association.cart_id' on instance '<CartProductsAssociation at 0x7f5fd41721d0>'
@@ -34,7 +31,7 @@ class Tag(MethodView):
 
     #https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html#deleting-rows-from-the-many-to-many-table
     
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.response(202, description="accepted - tag deleted")
     @blp.alt_response(404, description="tag not found")
     def delete(self, tag_id):
@@ -52,7 +49,7 @@ class Tag(MethodView):
 
         return {"code": 200,"message": "tag deleted successfully"}
 
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.arguments(TagUpdateSchema)
     @blp.response(204, TagSchema,  description="success, no content - tag modified")
     @blp.alt_response(409, description="database constraint violation")
@@ -87,7 +84,7 @@ class Tag(MethodView):
 
 @blp.route("/tags")
 class TagList(MethodView):
-   # @jwt_required() RE ENABLE
+    @jwt_required() 
     @blp.arguments(TagSearchQueryArgs, location="query")
     @blp.response(200, TagSchema(many=True),  description="success - tags found")
     def get(self, search_value):
@@ -101,7 +98,7 @@ class TagList(MethodView):
 
         return result
         
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.arguments(PlainTagSchema)
     @blp.response(201, TagSchema,  description="created - tag created")
     @blp.alt_response(409, description="database constraint violation")

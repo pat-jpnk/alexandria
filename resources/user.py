@@ -137,7 +137,7 @@ class User(MethodView):
 
 @blp.route("/users")
 class UserList(MethodView):
-    #@jwt_required()
+    @jwt_required()
     @blp.arguments(UserSearchQueryArgs, location="query")
     @blp.response(200, PlainUserSchema(many=True), description="success - users found")
     def get(self, search_value):

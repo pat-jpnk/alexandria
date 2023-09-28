@@ -12,3 +12,5 @@ flask-jwt-extended
 passlib
 redis
 crockford32
+boto3
+filetype

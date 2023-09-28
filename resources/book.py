@@ -1,14 +1,19 @@
+from flask import current_app as app
 from flask.views import MethodView
 from flask_smorest import * #Blueprint, abort
 from flask_smorest.fields import Upload
 from flask_jwt_extended import jwt_required
-from schemas import BookSchema, BookUpdateSchema, PlainBookSchema, MultipartFileSchema, BookSearchQueryArgs #BooktagSchema
+from schemas import BookSchema, BookUpdateSchema, PlainBookSchema, MultipartFileSchema, BookSearchQueryArgs
 from werkzeug.utils import secure_filename
 from models import BookModel, TagModel
 from db import db
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import sqlalchemy.sql as sql
 import link_id as lid
+import datetime 
+
+from S3 import s3
+import filetype
 
 # todo: replace aws
 import gzip
@@ -59,7 +64,7 @@ class Book(MethodView):
 
         return {"code": 200,"message": "book deleted successfully"}
     
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.arguments(BookUpdateSchema)
     @blp.response(204, BookSchema,  description="success, no content - tag modified")
     @blp.alt_response(409, description="database constraint violation")
@@ -91,31 +96,68 @@ class Book(MethodView):
 # TODO: COMPLETE
 @blp.route("/book/<string:book_id>/file")
 class BookFile(MethodView):
-    @jwt_required()
+    #@jwt_required()
     @blp.response(200)
     @blp.alt_response(404, description="book not found")
     def get(self, book_id):
         """get book file"""
-        file_url = BookModel.query.filter_by(link_id = book_id).first().file_url
+        #file_url = BookModel.query.filter_by(link_id = book_id).first().file_url
 
-        if not file_url:
-            abort(404, message="book not found")  
+        #if not file_url:
+        #    abort(404, message="book not found")  
+        
+        '''
+        with open('book', 'wb') as book_file:
+            s3.download_fileobj("alexandria-api", "6XHKJCSGCRV32RHQC4RG", book_file)
+            book_file.flush()
+
+        book_file.read()
+        '''
+
+        book_file = s3.get_object(Bucket='alexandria-api', Key='CCT68DK4C9H3ERK46GSG')['Body'].read()
+        book_file = gzip.decompress(book_file)
+
+
+#        exit()
+
+        from flask import Response
+
+        response = Response(book_file, mimetype="application/pdf")
+        response.headers.set("Content-Disposition", "attachment", filename="book.pdf")
+        return response
+
+        #response = make_response(book_file)
+        #response.headers.set('Content-Type', 'application/pdf')  # use db var
+        #response.headers.set('Content-Disposition', 'attachment', filename="file.pdf") # change
+
+        #return response
 
         # decompress
 
+        '''
         with gzip.open(file_url, "rb") as comp_file:
             raw_file = comp_file.read()
             print(type(raw_file))
             exit()
-        
+        '''
         # .gz
-        return send_from_directory("/home/patrick/Programming/alexandria/tempfiles","bwl1zh848g6a1.jpg ", as_attachment=True)
+        #return send_from_directory("/home/patrick/Programming/alexandria/tempfiles","bwl1zh848g6a1.jpg ", as_attachment=True)
+
+    @jwt_required()
+    @blp.response(204, BookSchema,  description="success, no content - tag modified")
+
+    @jwt_required()
+    @blp.response(204)
+    #@blp.alt_response()
+    @blp.arguments(MultipartFileSchema, location="files")
+    def put(self, book_id):
+        pass # TODO: update book file
+
 
 
 @blp.route("/books")
 class BookList(MethodView):
-   # @jwt_required() RE ENABLE
-    #@blp.arguments(Book)
+    #@jwt_required()
     @blp.arguments(BookSearchQueryArgs, location="query")
     @blp.response(200, BookSchema(many=True))
     @blp.paginate(CursorPage)
@@ -145,12 +187,147 @@ class BookList(MethodView):
         return result
 
     
-    #@blp.arguments(PlainBookSchema)
-    #@jwt_required(fresh=True) RE ENABLE
+    #@jwt_required(fresh=True) 
     @blp.arguments(PlainBookSchema, location="form")
     @blp.arguments(MultipartFileSchema, location="files")
     @blp.response(201, BookSchema, description="created - book created")
-    def post(self, book_data, files): # files
+    def post(self, book_data, files): 
+        
+        book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
+
+        '''check file size'''
+        book_file.seek(0,2)
+        print("len: ", book_file.tell()) # in bytes
+        book_file.seek(0,0)
+        
+        book_file.seek(0,2)
+        if book_file.tell() > app.config["MAX_FILE_SIZE"]:
+            print("ERROR 2")
+            exit()
+        
+
+        book_file.seek(0,0)
+        
+
+        '''check content type'''
+        content_type = book_file.headers.get('Content-Type')
+
+        if content_type:
+            pass
+        else:
+            pass
+
+        file_type = filetype.guess(book_file.read())
+        #book_file.seek(0)
+
+        if file_type:
+            if file_type.mime in app.config["FILE_FORMATS"]:
+                if file_type.mime == content_type:
+                    pass
+                else:
+                    print("ERROR 3")
+                    exit()
+            else:
+                print("ERROR 4")
+                exit()
+        else:
+            print("ERROR 5")
+            exit()
+
+
+        '''compress file'''
+        book_file = gzip.compress(book_file.read())
+
+
+        '''get MD5'''
+        import hashlib
+        book_file_md5 = hashlib.md5(book_file).hexdigest()
+
+        '''upload file'''
+        bucket_url = app.config["AWS_S3_BUCKET_URL"]
+        key = lid.get_link_id()
+        
+        response = s3.put_object(
+            Bucket = "alexandria-api",
+            Key = key,
+            Body = book_file,
+            ContentType = content_type
+        )
+
+        if response.get('ETag') and response.get('ETag') == '"' + book_file_md5 + '"':
+            object_url = bucket_url + "/" + key
+
+            '''add DB entry'''
+            book_data["link_id"] = lid.get_link_id()
+            book_data["file_url"] = object_url
+            book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            book = BookModel(**book_data)
+
+            print("BOOK: ", book_data)
+
+            try:
+                db.session.add(book)
+                db.session.commit()
+            except IntegrityError:
+                abort(409, message="error, database constraint violation occured")
+            except SQLAlchemyError:
+                abort(500, message="error occured during book insertion")
+        
+            return book
+
+
+
+        else:
+            print("etag: ", type(response.get('ETag')))
+            print("md5: ", type(book_file_md5))
+            print("ERROR 1")
+            exit()
+        '''        
+
+        book_data["link_id"] = lid.get_link_id()
+        book_data["file_url"] = "dddddddd" #object_url
+        book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        book = BookModel(**book_data)
+
+        print("BOOK: ", book_data)
+
+        try:
+            db.session.add(book)
+            db.session.commit()
+        except IntegrityError:
+            abort(409, message="error, database constraint violation occured")
+        except SQLAlchemyError:
+            abort(500, message="error occured during book insertion")
+        
+        return book
+        '''
+
+
+
+        # ----------------------------------------------------------------------------------------------------------
+
+        # files
+
+        #from app import create_app
+        #app = create_app()
+
+        # TODO: decide on solution for duplicate file name (do not use filename, use link_id)
+
+        # https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+
+        # TODO: check maximum file size  X
+        # TODO: Set a filename length limit. Restrict the allowed characters if possible
+        # TODO: Change the filename to something generated by the application
+        # TODO: Set a filename length limit. Restrict the allowed characters if possible
+        # TODO: Validate the file type, don't trust the Content-Type header as it can be spoofed X
+
+        # https://s3-REGION-.amazonaws.com/BUCKET-NAME/KEY
+
+        # eu-central-1
+        # alexandria-api
+
+        # https://s3-eu-central-1.amazonaws.com/alexandria-api/    app.config["AWS_S3_BUCKET_URL"]
+
 
         """
         - compress before upload, no S3 feature
@@ -170,122 +347,56 @@ class BookList(MethodView):
 
 
         """create book"""
-        print(files["file"].filename)
-        book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
+        #print(files["file"].filename)
+        
+        ###book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
         
        # book_file.read()
        # book_file.seek(0)
 
         #print(type(book_file))          
 
-        print("name: ", book_file.filename)
+        ###print("name: ", book_file.filename)
 
         # book_file.headers.get('Content-Type') == 'application/pdf'
 
-        print("headers: ", book_file.headers)
+        ###print("headers: ", book_file.headers)
 
         # https://pocoo-libs.narkive.com/pMsdZlrr/filestorage-content-length-always-zero
 
     
 
         '''get file size'''
-        book_file.seek(0,2)
-        print("len: ", book_file.tell()) # in bytes
-        book_file.seek(0,0)
+        ###book_file.seek(0,2)
+        ###print("len: ", book_file.tell()) # in bytes
+        ###book_file.seek(0,0)
         
         '''get content type'''
-        content_type = book_file.headers.get('Coxntent-Type')
-
-        if content_type:
-            if content_type != 'application/pdf':
-                pass
-        else:
-            print('NOOOOOO') # content type header not found
-
-
-        '''
-        app.config["FILE_FORMATS"] = ["application/pdf"]
-        app.config["MAX_FILE_SIZE"] = 300000000         
+        ###content_type = book_file.headers.get('Content-Type')
 
         
-        '''    
+        ###if content_type:
+            ###if content_type not in app.config["FILE_FORMATS"]:  # 'application/pdf':
+                ###pass
+        ###else:
+            ###print('NOOOOOO') # content type header not found
 
-        '''compress bytes'''
-
-        '''
-
-        print("")
-
-        #print("uncon: ", book_file.read().hex())       
-        print("uncon len: ", len(book_file.read().hex()))        
+    
 
 
-        print("read type: ", type(book_file.read()))        # read type:  <class 'bytes'>
-        print("read: ", book_file.read())
-        print("read hex: ", book_file.read().hex())
-        con = gzip.compress(book_file.read())               # com type:  <class 'bytes'>
-        
-        print("con type: ", type(con))
-        print("con len: ", len(con))
-
-        print("con: ", con)
-        print("con hex: ", con.hex())        
-
-        print("print con after .hex(): ", con)
+      
 
 
-        uu = gzip.decompress(con)
-        print("uu type: ", type(uu))
-        '''
 
-        print("")
+    
 
-        print("uncompressed len hex: ", len(book_file.read().hex()))
-
-        book_file.seek(0,0)
-
-        compp = gzip.compress(book_file.read())
-        
-        book_file.seek(0,0)
-
-        print("compressed len hex: ", len(compp.hex()))
-
-        u_compp = gzip.decompress(compp)
-
-        print("uncompressed len hex: ", len(u_compp.hex()))
-
-
-        
-
-        exit()
-
-        base_dir = "/home/patrick/Programming/alexandria/tempfiles"   # replace with variable maybe
-        book_path = os.path.join(base_dir, secure_filename(book_file.filename))
-        comp_book_path = book_path + '.gz'
-        book_file.save(book_path)
-
-        with open(book_path, 'rb') as raw_file, gzip.open(comp_book_path, 'wb') as comp_file:
-            comp_file.writelines(raw_file)
-
-        #print(book_data)
-
-        if os.path.exists(book_path):
-            os.remove(book_path)
-            pass
-        else:
-            pass
-        
-        '''
-        
-        uncompressed: 71.1 kB
-        compressed: 67.7 kB
-        
-        -> jpeg, already pretty compressed, have to check pdf
+      # --------------------------------------------------------------------------------------------
 
         '''
 
         book_data["link_id"] = lid.get_link_id()
-        book_data["file_url"] = comp_book_path
+        book_data["file_url"] = comp_book_path # todo change
+        book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         book = BookModel(**book_data)
 
         try:
@@ -297,11 +408,11 @@ class BookList(MethodView):
             abort(500, message="error occured during book insertion")
         
         return book
-
+        '''
 
 @blp.route("/book/<string:book_id>/tag/<string:tag_id>")
 class BookTags(MethodView):
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.response(201, BookSchema, description="created - book tag relation created")
     @blp.alt_response(404, description="book not found")
     @blp.alt_response(404, description="tag not found")

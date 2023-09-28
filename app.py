@@ -35,6 +35,8 @@ def create_app(development_db = None):
     app.config["FILE_FORMATS"] = ["application/pdf"]
     app.config["MAX_FILE_SIZE"] = 300000000                 # 300 MB in bytes
 
+    app.config["AWS_S3_BUCKET_URL"] = "https://s3-eu-central-1.amazonaws.com/alexandria-api"
+
 
     db.init_app(app)
     api = Api(app)

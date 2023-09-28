@@ -4,11 +4,11 @@ from marshmallow import Schema, fields, validate
 class PlainBookSchema(Schema):
     link_id = fields.Str(dump_only=True)
     title = fields.Str(required=True)
-    added_at = fields.Str(required=True)                     #fields.DateTime(format="iso,required=True) # ISO 8601 # dump_only=True  required=True
+    added_at = fields.Str(dump_only=True)     
     release_year = fields.Int(validate=lambda x: x > 0)
-    completed = fields.Int(validate=validate.OneOf([0,1]))
-    bookmarked = fields.Int(validate=validate.OneOf([0,1]))
-    active = fields.Int(validate=validate.OneOf([0,1]))
+    completed = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
+    bookmarked = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
+    active = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
     file_url = fields.URL(dump_only=True)
 
 class PlainTagSchema(Schema):
@@ -42,7 +42,7 @@ class UserSchema(PlainUserSchema):
 
 class UserUpdateSchema(Schema):
     email = fields.Email(required=True, validate=validate.Email())
-    user_password = fields.Str(required=True, load_only=True)               # change ?
+    user_password = fields.Str(required=True, load_only=True)              
 
 class UserLoginSchema(Schema):
     user_name = fields.Str(required=True)
