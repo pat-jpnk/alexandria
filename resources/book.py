@@ -12,17 +12,10 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import sqlalchemy.sql as sql
 import link_id as lid
 import datetime 
-
 from S3 import s3
 import filetype
-
 import gzip
-
 import hashlib
-
-#temporary
-import os.path
-from flask import send_from_directory
 
 
 blp = Blueprint("Books", __name__, description="Book resource")
@@ -133,7 +126,7 @@ class BookFile(MethodView):
                 elif e.response["Error"]["Code"] == 'NoSuchKey':
                     abort(500, message="error, no S3 object with given key")
                 else:
-                    abort(500, message="unknown S3 error")
+                    abort(500, message="unknown S3 error occurred")
 
             book_file = gzip.decompress(book_file)
 
@@ -245,6 +238,7 @@ class BookList(MethodView):
     @blp.arguments(MultipartFileSchema, location="files")
     @blp.response(201, BookSchema, description="created - book created")
     def post(self, book_data, files): 
+        """add book"""
         
 
         # https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
@@ -347,7 +341,7 @@ class BookTags(MethodView):
                 db.session.add(book)
                 db.session.commit()
             except SQLAlchemyError:
-                abort(500, message="an error occurred while adding tag")
+                abort(500, message="an error occurred while creating book tag relation")
         
         return book
 
@@ -374,7 +368,7 @@ class BookTags(MethodView):
                     db.session.add(book)
                     db.session.commit()
                 except SQLAlchemyError:
-                    abort(500, message="an error occurred while adding tag")
+                    abort(500, message="an error occurred while deleting book tag relation")
 
         return {"code": 202, "message": "book tag relation deleted"}
     

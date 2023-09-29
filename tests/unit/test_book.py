@@ -43,6 +43,7 @@ def test_get_book_file(api_session):
 # modify book file
 @pytest.mark.dependency()
 def test_modify_book_file(api_session):
+    pass
 
 
 # modify book
@@ -58,10 +59,12 @@ def test_modify_book(api_session):
 # create relation between book and tag 
 @pytest.mark.dependency(depends=["test_add_book"])
 def test_create_book_tag_relation(api_session):
+    pass
 
 # delete relation between book and tag
 @pytest.mark.dependency(depends=["test_create_book_tag_relation"])
 def test_delete_book_tag_relation(api_session):
+    pass
 
 # delete book
 @pytest.mark.dependency(depends=["test_add_book"])

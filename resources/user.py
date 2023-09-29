@@ -20,7 +20,7 @@ class UserLogin(MethodView):
         user = UserModel.query.filter(UserModel.user_name == user_data["user_name"]).first()
 
         if user and pbkdf2_sha256.verify(user_data["user_password"], user.user_password):
-            access_token = create_access_token(identity=user.id, fresh=True)                           # use regular id?
+            access_token = create_access_token(identity=user.id, fresh=True)                        
             refresh_token = create_refresh_token(identity=user.id)
             return {"access_token": access_token, "refresh_token": refresh_token}
     
@@ -75,7 +75,7 @@ class UserRegister(MethodView):
             print(e)
             abort(409, message="error, database constraint violation occured")
         except SQLAlchemyError:
-            abort(500,message="error occured during user registration")
+            abort(500, message="error occured during user registration")
 
         return {"message": "user registered successfully"}, 201
 
@@ -122,12 +122,12 @@ class User(MethodView):
 
         if user:
             user.email = user_data["email"]
-            user.user_password = user_data["user_password"]    # TODO: SALT AND HASH, NOT PLAIN
+            user.user_password = pbkdf2_sha256.hash(user_data["user_password"])
             try:
                 db.session.add(user)
                 db.session.commit()
             except IntegrityError:
-                abort(409, message="error, database constraint violation occured")      # TODO: add more info, justify 409
+                abort(409, message="error, database constraint violation occured") 
             except SQLAlchemyError:
                 abort(500, message="error occured during user insertion")
         else:
