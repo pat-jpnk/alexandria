@@ -11,5 +11,5 @@ class BookModel(db.Model):
     completed = db.Column(db.Boolean, nullable=False, unique=False)
     bookmarked = db.Column(db.Boolean, nullable=False, unique=False)
     active = db.Column(db.Boolean, nullable=False, unique=False)
-    file_url = db.Column(db.String(128), unique=False, nullable=True)
+    file_url = db.Column(db.String(128), unique=True, nullable=True)
     tags = db.relationship("TagModel", back_populates="books", secondary="Booktags")

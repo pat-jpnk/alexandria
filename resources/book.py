@@ -1,5 +1,6 @@
 from flask import current_app as app
 from flask.views import MethodView
+from flask import Response
 from flask_smorest import * #Blueprint, abort
 from flask_smorest.fields import Upload
 from flask_jwt_extended import jwt_required
@@ -15,8 +16,9 @@ import datetime
 from S3 import s3
 import filetype
 
-# todo: replace aws
 import gzip
+
+import hashlib
 
 #temporary
 import os.path
@@ -33,7 +35,7 @@ class CursorPage(Page):
 
 @blp.route("/book/<string:book_id>")
 class Book(MethodView):
-    @jwt_required()
+    #@jwt_required()
     @blp.response(200, BookSchema)
     @blp.alt_response(404, description="book not found")
     def get(self, book_id):
@@ -45,31 +47,45 @@ class Book(MethodView):
   
         return book
 
-    # TODO: delete file when deleting book
-    @jwt_required(fresh=True)
-    @blp.response(202, description="accepted - book deleted")
+    #@jwt_required(fresh=True)
+    @blp.response(204, description="accepted - book deleted")
     @blp.alt_response(404, description="book not found")
     def delete(self, book_id):
         """delete book"""
         book = BookModel.query.filter_by(link_id = book_id).first()
 
         if book:
-            try:
-                db.session.delete(book)
-                db.session.commit()
-            except SQLAlchemyError:
-                abort(500, message="error occurred during book deletion")
+            file_url_parts = book.file_url.split('/')          
+            blob_key = file_url_parts[4]
+
+            response = s3.delete_object (
+                Bucket = "alexandria-api",
+                Key = blob_key
+            )
+
+            response_data = response.get("ResponseMetaData")
+            if response_data is None:
+                abort(500, message="error occured during S3 file deletion")
+            else:
+                if response_data.get("HTTPStatusCode") == 204:
+                    try:
+                        db.session.delete(book)
+                        db.session.commit()
+                    except SQLAlchemyError:
+                        abort(500, message="error occurred during book deletion")                    
+                else:
+                    abort(500, message="error occured during S3 file deletion")
         else:
             abort(404, message="book not found")
 
-        return {"code": 200,"message": "book deleted successfully"}
+        return {"code": 204,"message": "book deleted successfully"}
     
     @jwt_required(fresh=True)
     @blp.arguments(BookUpdateSchema)
     @blp.response(204, BookSchema,  description="success, no content - tag modified")
     @blp.alt_response(409, description="database constraint violation")
     @blp.alt_response(404, description="book not found")
-    def put(self, book_data, book_id):      # book data goes first, book_data is extra parameter added by smorest arguments decorator        
+    def put(self, book_data, book_id):           
         """modify book"""
         book = BookModel.query.filter_by(link_id = book_id).first()    
 
@@ -93,7 +109,6 @@ class Book(MethodView):
 
         return book
 
-# TODO: COMPLETE
 @blp.route("/book/<string:book_id>/file")
 class BookFile(MethodView):
     #@jwt_required()
@@ -101,57 +116,98 @@ class BookFile(MethodView):
     @blp.alt_response(404, description="book not found")
     def get(self, book_id):
         """get book file"""
-        #file_url = BookModel.query.filter_by(link_id = book_id).first().file_url
-
-        #if not file_url:
-        #    abort(404, message="book not found")  
+        book = BookModel.query.filter_by(link_id = book_id).first()
         
-        '''
-        with open('book', 'wb') as book_file:
-            s3.download_fileobj("alexandria-api", "6XHKJCSGCRV32RHQC4RG", book_file)
-            book_file.flush()
+        if book:
+            file_url_parts = book.file_url.split('/')
+            blob_key = file_url_parts[4]
 
-        book_file.read()
-        '''
+            try:
 
-        book_file = s3.get_object(Bucket='alexandria-api', Key='CCT68DK4C9H3ERK46GSG')['Body'].read()
-        book_file = gzip.decompress(book_file)
+                book_file = s3.get_object(
+                    Bucket = 'alexandria-api', 
+                    Key = blob_key)['Body'].read()
+            except ClientError as e:
+                if e.response["Error"]["Code"] == 'InvalidObjectState':
+                    abort(500, message="error, S3 object is archived and inaccessible")
+                elif e.response["Error"]["Code"] == 'NoSuchKey':
+                    abort(500, message="error, no S3 object with given key")
+                else:
+                    abort(500, message="unknown S3 error")
 
+            book_file = gzip.decompress(book_file)
 
-#        exit()
+            response = Response(book_file, mimetype="application/pdf")
+            response.headers.set("Content-Disposition", "attachment", filename="book.pdf")
+            
+            return response
+        else:
+            abort(404, message="error, book not found")
 
-        from flask import Response
-
-        response = Response(book_file, mimetype="application/pdf")
-        response.headers.set("Content-Disposition", "attachment", filename="book.pdf")
-        return response
-
-        #response = make_response(book_file)
-        #response.headers.set('Content-Type', 'application/pdf')  # use db var
-        #response.headers.set('Content-Disposition', 'attachment', filename="file.pdf") # change
-
-        #return response
-
-        # decompress
-
-        '''
-        with gzip.open(file_url, "rb") as comp_file:
-            raw_file = comp_file.read()
-            print(type(raw_file))
-            exit()
-        '''
-        # .gz
-        #return send_from_directory("/home/patrick/Programming/alexandria/tempfiles","bwl1zh848g6a1.jpg ", as_attachment=True)
-
-    @jwt_required()
-    @blp.response(204, BookSchema,  description="success, no content - tag modified")
-
-    @jwt_required()
-    @blp.response(204)
+    #@jwt_required()
+    @blp.response(204, description="success, file modified")
     #@blp.alt_response()
     @blp.arguments(MultipartFileSchema, location="files")
-    def put(self, book_id):
-        pass # TODO: update book file
+    def put(self, files, book_id):
+        book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
+
+        '''check file size'''
+        book_file.seek(0,2)
+        if book_file.tell() > app.config["MAX_FILE_SIZE"]:
+            abort(413, message="error, file too large")
+        book_file.seek(0,0)
+        
+        '''check content type'''
+        content_type = book_file.headers.get('Content-Type')
+
+        if not content_type:
+            abort(400, message="error, Content-Type header required")
+
+
+        file_type = filetype.guess(book_file.read())
+        book_file.seek(0)
+
+
+        if file_type:
+            if file_type.mime in app.config["FILE_FORMATS"]:
+                if file_type.mime != content_type:
+                    abort(422, message="error, inferred file type differs from Content-Header")
+            else:
+                abort(415, message="error, unsupported file type")
+        else:
+            abort(422, message="error, file type indeterminate")
+
+        '''compress file'''
+        book_file = gzip.compress(book_file.read())
+
+        '''get MD5 hash'''
+        book_file_md5 = hashlib.md5(book_file).hexdigest()
+        book = BookModel.query.filter_by(link_id = book_id).first()    
+
+        # check for None
+
+        if book:
+            file_url_parts = book.file_url.split('/')            # check if surely there 
+            blob_key = file_url_parts[4]
+
+            response = s3.put_object(
+                Bucket = "alexandria-api",
+                Key = blob_key,
+                Body = book_file,
+                ContentType = content_type
+            )
+            
+            response_data = response.get("ResponseMetadata")
+            if response_data is None:
+                abort(500, message="error occured during S3 file modification")
+            else:
+                if response_data.get("HTTPStatusCode") == 200:
+                    return {"code": 204, "message": "file modified"}
+                else:
+                    abort(500, message="error occurred during S3 file modification")
+        else:
+            # roll back aws ?
+            abort(404, message="book not found")
 
 
 
@@ -163,9 +219,6 @@ class BookList(MethodView):
     @blp.paginate(CursorPage)
     def get(self, search_values):
         """list multiple books"""
-        #return BookModel.query.all()
-        print(search_values)            # TODO: remove
-
         title = search_values.get("title")
         release_year = search_values.get("release_year")
         sort = search_values.get("sort")
@@ -193,46 +246,40 @@ class BookList(MethodView):
     @blp.response(201, BookSchema, description="created - book created")
     def post(self, book_data, files): 
         
+
+        # https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+
+        # TODO: check maximum file size  X
+        # TODO: Set a filename length limit. Restrict the allowed characters if possible
+        # TODO: Change the filename to something generated by the application
+        # TODO: Set a filename length limit. Restrict the allowed characters if possible
+        # TODO: Validate the file type, don't trust the Content-Type header as it can be spoofed X
+
         book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
 
         '''check file size'''
         book_file.seek(0,2)
-        print("len: ", book_file.tell()) # in bytes
-        book_file.seek(0,0)
-        
-        book_file.seek(0,2)
         if book_file.tell() > app.config["MAX_FILE_SIZE"]:
-            print("ERROR 2")
-            exit()
-        
-
+            abort(413, message="error, file too large")
         book_file.seek(0,0)
         
-
         '''check content type'''
         content_type = book_file.headers.get('Content-Type')
 
-        if content_type:
-            pass
-        else:
-            pass
+        if not content_type:
+            abort(400, message="error, Content-Type header required")
 
         file_type = filetype.guess(book_file.read())
-        #book_file.seek(0)
+        book_file.seek(0)
 
         if file_type:
             if file_type.mime in app.config["FILE_FORMATS"]:
-                if file_type.mime == content_type:
-                    pass
-                else:
-                    print("ERROR 3")
-                    exit()
+                if file_type.mime != content_type:
+                    abort(422, message="error, inferred file type differs from Content-Header")
             else:
-                print("ERROR 4")
-                exit()
+                abort(415, message="error, unsupported file type")
         else:
-            print("ERROR 5")
-            exit()
+            abort(422, message="error, file type indeterminate")
 
 
         '''compress file'''
@@ -240,7 +287,7 @@ class BookList(MethodView):
 
 
         '''get MD5'''
-        import hashlib
+        import hashlib  # TODO: move top
         book_file_md5 = hashlib.md5(book_file).hexdigest()
 
         '''upload file'''
@@ -263,8 +310,7 @@ class BookList(MethodView):
             book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             book = BookModel(**book_data)
 
-            print("BOOK: ", book_data)
-
+            # TODO: remove file when DB fails
             try:
                 db.session.add(book)
                 db.session.commit()
@@ -275,144 +321,14 @@ class BookList(MethodView):
         
             return book
 
-
-
         else:
-            print("etag: ", type(response.get('ETag')))
-            print("md5: ", type(book_file_md5))
-            print("ERROR 1")
-            exit()
-        '''        
+            # TODO: delete file
+            abort(500, message="error, file corruption occured during S3 upload")
 
-        book_data["link_id"] = lid.get_link_id()
-        book_data["file_url"] = "dddddddd" #object_url
-        book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        book = BookModel(**book_data)
-
-        print("BOOK: ", book_data)
-
-        try:
-            db.session.add(book)
-            db.session.commit()
-        except IntegrityError:
-            abort(409, message="error, database constraint violation occured")
-        except SQLAlchemyError:
-            abort(500, message="error occured during book insertion")
-        
-        return book
-        '''
-
-
-
-        # ----------------------------------------------------------------------------------------------------------
-
-        # files
-
-        #from app import create_app
-        #app = create_app()
-
-        # TODO: decide on solution for duplicate file name (do not use filename, use link_id)
-
-        # https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
-
-        # TODO: check maximum file size  X
-        # TODO: Set a filename length limit. Restrict the allowed characters if possible
-        # TODO: Change the filename to something generated by the application
-        # TODO: Set a filename length limit. Restrict the allowed characters if possible
-        # TODO: Validate the file type, don't trust the Content-Type header as it can be spoofed X
-
-        # https://s3-REGION-.amazonaws.com/BUCKET-NAME/KEY
-
-        # eu-central-1
-        # alexandria-api
-
-        # https://s3-eu-central-1.amazonaws.com/alexandria-api/    app.config["AWS_S3_BUCKET_URL"]
-
-
-        """
-        - compress before upload, no S3 feature
-        - use book_file.read() to get byte stream of <class 'werkzeug.datastructures.FileStorage'> for upload without saving
-        
-        - somehow compresss bytestream instead of file
-
-        - upload bytes using s3 put_object 
-
-        https://www.learnaws.org/2022/08/22/boto3-s3-upload_file-vs-put-object/
-        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/put_object.html
-        https://saturncloud.io/blog/flask-upload-image-to-s3-without-saving-to-local-file-system/
-
-
-        """
-
-
-
-        """create book"""
-        #print(files["file"].filename)
-        
-        ###book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
-        
-       # book_file.read()
-       # book_file.seek(0)
-
-        #print(type(book_file))          
-
-        ###print("name: ", book_file.filename)
-
-        # book_file.headers.get('Content-Type') == 'application/pdf'
-
-        ###print("headers: ", book_file.headers)
-
-        # https://pocoo-libs.narkive.com/pMsdZlrr/filestorage-content-length-always-zero
-
-    
-
-        '''get file size'''
-        ###book_file.seek(0,2)
-        ###print("len: ", book_file.tell()) # in bytes
-        ###book_file.seek(0,0)
-        
-        '''get content type'''
-        ###content_type = book_file.headers.get('Content-Type')
-
-        
-        ###if content_type:
-            ###if content_type not in app.config["FILE_FORMATS"]:  # 'application/pdf':
-                ###pass
-        ###else:
-            ###print('NOOOOOO') # content type header not found
-
-    
-
-
-      
-
-
-
-    
-
-      # --------------------------------------------------------------------------------------------
-
-        '''
-
-        book_data["link_id"] = lid.get_link_id()
-        book_data["file_url"] = comp_book_path # todo change
-        book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        book = BookModel(**book_data)
-
-        try:
-            db.session.add(book)
-            db.session.commit()
-        except IntegrityError:
-            abort(409, message="error, database constraint violation occured")
-        except SQLAlchemyError:
-            abort(500, message="error occured during book insertion")
-        
-        return book
-        '''
 
 @blp.route("/book/<string:book_id>/tag/<string:tag_id>")
 class BookTags(MethodView):
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.response(201, BookSchema, description="created - book tag relation created")
     @blp.alt_response(404, description="book not found")
     @blp.alt_response(404, description="tag not found")
@@ -435,7 +351,7 @@ class BookTags(MethodView):
         
         return book
 
-    @jwt_required(fresh=True)
+    #@jwt_required(fresh=True)
     @blp.response(202, description="accepted - book tag relation deleted")
     @blp.alt_response(404, description="book not found")
     @blp.alt_response(404, description="tag not found")
@@ -460,6 +376,6 @@ class BookTags(MethodView):
                 except SQLAlchemyError:
                     abort(500, message="an error occurred while adding tag")
 
-        return {"message": "tag removed from book", "book": book, "tag": tag}
+        return {"code": 202, "message": "book tag relation deleted"}
     
 

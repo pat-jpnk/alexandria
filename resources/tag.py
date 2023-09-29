@@ -84,7 +84,7 @@ class Tag(MethodView):
 
 @blp.route("/tags")
 class TagList(MethodView):
-    @jwt_required() 
+    #@jwt_required() 
     @blp.arguments(TagSearchQueryArgs, location="query")
     @blp.response(200, TagSchema(many=True),  description="success - tags found")
     def get(self, search_value):
