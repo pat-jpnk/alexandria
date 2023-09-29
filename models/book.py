@@ -13,3 +13,4 @@ class BookModel(db.Model):
     active = db.Column(db.Boolean, nullable=False, unique=False)
     file_url = db.Column(db.String(128), unique=True, nullable=True)
     tags = db.relationship("TagModel", back_populates="books", secondary="Booktags")
+    mime_type = db.Column(db.String, nullable=True)

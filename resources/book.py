@@ -116,7 +116,6 @@ class BookFile(MethodView):
             blob_key = file_url_parts[4]
 
             try:
-
                 book_file = s3.get_object(
                     Bucket = 'alexandria-api', 
                     Key = blob_key)['Body'].read()
@@ -129,9 +128,19 @@ class BookFile(MethodView):
                     abort(500, message="unknown S3 error occurred")
 
             book_file = gzip.decompress(book_file)
+            
+            match book.mime_type:
+                case "application/pdf":
+                    file_name_extension = ".pdf"
+                case "application/epub+zip":
+                    file_name_extension = ".epub"
+                case _:
+                    file_name_extension = ""
+
+            file_name = book.title.replace(" ", "_") + file_name_extension
 
             response = Response(book_file, mimetype="application/pdf")
-            response.headers.set("Content-Disposition", "attachment", filename="book.pdf")
+            response.headers.set("Content-Disposition", "attachment", filename=file_name)
             
             return response
         else:
@@ -159,7 +168,6 @@ class BookFile(MethodView):
 
         file_type = filetype.guess(book_file.read())
         book_file.seek(0)
-
 
         if file_type:
             if file_type.mime in app.config["FILE_FORMATS"]:
@@ -195,6 +203,15 @@ class BookFile(MethodView):
                 abort(500, message="error occured during S3 file modification")
             else:
                 if response_data.get("HTTPStatusCode") == 200:
+                    book.mime_type = file_type.mime
+                    try:
+                        db.session.add(book)
+                        db.session.commit()
+                    except IntegrityError:
+                        abort(409, message="error, database constraint violation occured")      
+                    except SQLAlchemyError:
+                        abort(500, message="error occured during tag insertion")
+
                     return {"code": 204, "message": "file modified"}
                 else:
                     abort(500, message="error occurred during S3 file modification")
@@ -302,6 +319,7 @@ class BookList(MethodView):
             book_data["link_id"] = lid.get_link_id()
             book_data["file_url"] = object_url
             book_data["added_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            book_data["mime_type"] = file_type.mime
             book = BookModel(**book_data)
 
             # TODO: remove file when DB fails

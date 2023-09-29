@@ -10,6 +10,7 @@ class PlainBookSchema(Schema):
     bookmarked = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
     active = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
     file_url = fields.URL(dump_only=True)
+    mime_type = fields.Str(dump_only=True)
 
 class PlainTagSchema(Schema):
     link_id = fields.Str(dump_only=True)
@@ -49,7 +50,7 @@ class UserLoginSchema(Schema):
     user_password = fields.Str(required=True, load_only=True)               
     
 class MultipartFileSchema(Schema):
-    file = fields.Raw(required=True)                     # metadata={"type": "file"}
+    file = fields.Raw(required=True, metadata={"type": "file"})                    
 
 
 class BookSearchQueryArgs(Schema):

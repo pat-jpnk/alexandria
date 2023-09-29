@@ -23,7 +23,8 @@ CREATE TABLE Books (
     completed INTEGER NOT NULL CHECK (completed IN (0,1)) DEFAULT 0,
     bookmarked INTEGER NOT NULL CHECK (bookmarked IN (0,1)) DEFAULT 0,
     active INTEGER NOT NULL CHECK (active IN (0,1)) DEFAULT 0,
-    file_url TEXT DEFAULT ''
+    file_url TEXT DEFAULT '',
+    mime_type TEXT
 );
 
 
