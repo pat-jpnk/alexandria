@@ -13,3 +13,4 @@ passlib
 redis
 crockford32
 boto3
+isort

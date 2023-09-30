@@ -1,11 +1,13 @@
 from flask.views import MethodView
-from flask_smorest import Blueprint, abort
 from flask_jwt_extended import jwt_required
-from schemas import TagSchema, TagUpdateSchema, PlainTagSchema, TagSearchQueryArgs
-from models import TagModel
-from db import db
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from flask_smorest import Blueprint, abort
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
 import link_id as lid
+from db import db
+from models import TagModel
+from schemas import (PlainTagSchema, TagSchema, TagSearchQueryArgs,
+                     TagUpdateSchema)
 
 blp = Blueprint("Tags", __name__, description="Tag resource")
 

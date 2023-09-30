@@ -36,7 +36,7 @@ class PlainUserSchema(Schema):
     link_id = fields.Str(dump_only=True)
     user_name = fields.Str(required=True)
     email = fields.Email(required=True, validate=validate.Email())
-
+    is_admin = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
 
 class UserSchema(PlainUserSchema):
     user_password = fields.Str(required=True, load_only=True) 
@@ -52,13 +52,11 @@ class UserLoginSchema(Schema):
 class MultipartFileSchema(Schema):
     file = fields.Raw(required=True, metadata={"type": "file"})                    
 
-
 class BookSearchQueryArgs(Schema):
     title = fields.Str(required=False)
     release_year = fields.Int(required=False)
     sort = fields.Str(required=False)
     order = fields.Str(required=False)
-
 
 class TagSearchQueryArgs(Schema):
     name = fields.Str(required=False)

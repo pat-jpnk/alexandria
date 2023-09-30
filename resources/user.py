@@ -1,13 +1,16 @@
 from flask.views import MethodView
+from flask_jwt_extended import (create_access_token, create_refresh_token,
+                                get_jwt, get_jwt_identity, jwt_required)
 from flask_smorest import Blueprint, abort
-from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, jwt_required, get_jwt
-from blocklist import BLOCKED_JWT
-from schemas import UserSchema, UserUpdateSchema, PlainUserSchema, UserLoginSchema, UserSearchQueryArgs
-from models import UserModel
-from db import db
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from passlib.hash import pbkdf2_sha256
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
 import link_id as lid
+from blocklist import BLOCKED_JWT
+from db import db
+from models import UserModel
+from schemas import (PlainUserSchema, UserLoginSchema, UserSchema,
+                     UserSearchQueryArgs, UserUpdateSchema)
 
 blp = Blueprint("Users", __name__, description="User resource")
 
@@ -59,13 +62,14 @@ class UserRegister(MethodView):
             abort(409, message="duplicate username")
 
         user_data["link_id"] = lid.get_link_id()
-        user = UserModel(**user_data)
+        user_data["is_admin"] = False
         
         user = UserModel (
             user_name = user_data["user_name"],
             user_password = pbkdf2_sha256.hash(user_data["user_password"]),
             email = user_data["email"],
-            link_id = user_data["link_id"]
+            link_id = user_data["link_id"],
+            is_admin = user_data["is_admin"]
         )
 
         try:
@@ -137,7 +141,7 @@ class User(MethodView):
 
 @blp.route("/users")
 class UserList(MethodView):
-    @jwt_required()
+    #@jwt_required()
     @blp.arguments(UserSearchQueryArgs, location="query")
     @blp.response(200, PlainUserSchema(many=True), description="success - users found")
     def get(self, search_value):

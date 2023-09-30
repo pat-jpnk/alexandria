@@ -1,14 +1,15 @@
 from os import getenv
+
 from dotenv import load_dotenv
 from flask import Flask, jsonify
-from flask_smorest import Api
 from flask_jwt_extended import JWTManager
-from db import db
-from blocklist import BLOCKED_JWT
+from flask_smorest import Api
 
+from blocklist import BLOCKED_JWT
+from db import db
 from resources.book import blp as BookBlueprint
-from resources.user import blp as UserBlueprint
 from resources.tag import blp as TagBlueprint
+from resources.user import blp as UserBlueprint
 
 
 def create_app(development_db = None):
@@ -26,14 +27,13 @@ def create_app(development_db = None):
     app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@3.25.x/"
     app.config["SQLALCHEMY_DATABASE_URI"] = development_db or getenv("DATABASE")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["UPLOAD_FOLDER"] = "/home/patrick/Programming/alexandria/tempfiles" #TODO: modify, delete if upload without temporary file works
 
     app.config["JWT_SECRET_KEY"] = getenv("JWT_SECRET_KEY")                        # used to sign JWT, confirms generation by this app, is not encryption, against tampering
                                                                                    # secrets.SystemRandom().getrandbits(128) 
 
 
     app.config["FILE_FORMATS"] = ["application/pdf", "application/epub+zip"]
-    app.config["MAX_FILE_SIZE"] = 300000000                 # 300 MB in bytes
+    app.config["MAX_FILE_SIZE"] = 300000000                                         # 300 MB in bytes
 
     app.config["AWS_S3_BUCKET_URL"] = "https://s3-eu-central-1.amazonaws.com/alexandria-api"
 
@@ -74,7 +74,6 @@ def create_app(development_db = None):
             jsonify({"message": "fresh token is required", "error": "fresh_token_required"}),
             401
         )
-
 
     @jwt.token_in_blocklist_loader
     def check_token_blocklist(jwt_header, jwt_payload):

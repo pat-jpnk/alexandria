@@ -9,7 +9,8 @@ CREATE TABLE Users (
     link_id TEXT UNIQUE NOT NULL,
     user_name TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    user_password TEXT NOT NULL
+    user_password TEXT NOT NULL,
+    is_admin BOOLEAN NOT NULL
 );
 
 -- books 

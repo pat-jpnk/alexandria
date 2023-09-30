@@ -1,22 +1,24 @@
-from flask import current_app as app
-from flask.views import MethodView
-from flask import Response
-from flask_smorest import * #Blueprint, abort
-from flask_smorest.fields import Upload
-from flask_jwt_extended import jwt_required
-from schemas import BookSchema, BookUpdateSchema, PlainBookSchema, MultipartFileSchema, BookSearchQueryArgs
-from werkzeug.utils import secure_filename
-from models import BookModel, TagModel
-from db import db
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-import sqlalchemy.sql as sql
-import link_id as lid
-import datetime 
-from S3 import s3
-import filetype
+import datetime
 import gzip
 import hashlib
 
+import filetype
+import sqlalchemy.sql as sql
+from flask import Response
+from flask import current_app as app
+from flask.views import MethodView
+from flask_jwt_extended import jwt_required
+from flask_smorest import Blueprint, abort, Page # *  # TODO: test if sufficient  
+from flask_smorest.fields import Upload
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from werkzeug.utils import secure_filename
+
+import link_id as lid
+from db import db
+from models import BookModel, TagModel
+from S3 import s3
+from schemas import (BookSchema, BookSearchQueryArgs, BookUpdateSchema,
+                     MultipartFileSchema, PlainBookSchema)
 
 blp = Blueprint("Books", __name__, description="Book resource")
 blp.DEFAULT_PAGINATION_PARAMETERS = {"page": 1, "page_size": 15, "max_page_size": 100}

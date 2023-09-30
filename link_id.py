@@ -1,5 +1,7 @@
 import uuid
+
 import crockford32 as cr32
+
 
 def get_link_id():
     link_id = uuid.uuid4()

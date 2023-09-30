@@ -8,3 +8,4 @@ class UserModel(db.Model):
     user_name = db.Column(db.String(128), unique=True, nullable=False)
     email = db.Column(db.String(128), unique=True, nullable=False)
     user_password = db.Column(db.String(128), unique=False, nullable=False)
+    is_admin = db.Column(db.Boolean, unique=False, nullable=False)

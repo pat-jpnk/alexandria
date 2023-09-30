@@ -1,6 +1,6 @@
 import pytest
 import requests
-from test_utils import SCHEME, DOMAIN, PORT, api_session, assert_status_code
+from test_utils import DOMAIN, PORT, SCHEME, api_session, assert_status_code
 
 import resources.tag as tag
 

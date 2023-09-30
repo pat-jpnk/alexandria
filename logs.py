@@ -1,7 +1,8 @@
+import logging
 from logging.config import dictConfig
+
 from flask import has_request_context, request
 from flask.logging import default_handler
-import logging
 
 dictConfig({
     'version': 1,

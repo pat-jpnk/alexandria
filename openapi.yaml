@@ -21,18 +21,22 @@ components:
     Book:
       properties:
         active:
+          default: 0
           enum:
           - 0
           - 1
           type: integer
         added_at:
+          readOnly: true
           type: string
         bookmarked:
+          default: 0
           enum:
           - 0
           - 1
           type: integer
         completed:
+          default: 0
           enum:
           - 0
           - 1
@@ -42,6 +46,9 @@ components:
           readOnly: true
           type: string
         link_id:
+          readOnly: true
+          type: string
+        mime_type:
           readOnly: true
           type: string
         release_year:
@@ -54,7 +61,6 @@ components:
         title:
           type: string
       required:
-      - added_at
       - title
       type: object
     BookUpdate:
@@ -96,7 +102,8 @@ components:
       type: object
     MultipartFile:
       properties:
-        file: {}
+        file:
+          type: file
       required:
       - file
       type: object
@@ -120,18 +127,22 @@ components:
     PlainBook:
       properties:
         active:
+          default: 0
           enum:
           - 0
           - 1
           type: integer
         added_at:
+          readOnly: true
           type: string
         bookmarked:
+          default: 0
           enum:
           - 0
           - 1
           type: integer
         completed:
+          default: 0
           enum:
           - 0
           - 1
@@ -143,12 +154,14 @@ components:
         link_id:
           readOnly: true
           type: string
+        mime_type:
+          readOnly: true
+          type: string
         release_year:
           type: integer
         title:
           type: string
       required:
-      - added_at
       - title
       type: object
     PlainTag:
@@ -244,7 +257,7 @@ paths:
   /book/{book_id}:
     delete:
       responses:
-        '202':
+        '204':
           description: accepted - book deleted
         '404':
           description: book not found
@@ -319,6 +332,22 @@ paths:
       schema:
         minLength: 1
         type: string
+    put:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartFile'
+        required: true
+      responses:
+        '204':
+          description: success, file modified
+        '422':
+          $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
+        default:
+          $ref: '#/components/responses/DEFAULT_ERROR'
+      tags:
+      - Books
   /book/{book_id}/tag/{tag_id}:
     delete:
       responses:
@@ -333,13 +362,13 @@ paths:
       - Books
     parameters:
     - in: path
-      name: tag_id
+      name: book_id
       required: true
       schema:
         minLength: 1
         type: string
     - in: path
-      name: book_id
+      name: tag_id
       required: true
       schema:
         minLength: 1
@@ -417,25 +446,9 @@ paths:
       tags:
       - Books
     post:
-      description: '- somehow compresss bytestream instead of file
-
-
-        - upload bytes using s3 put_object
-
-
-        https://www.learnaws.org/2022/08/22/boto3-s3-upload_file-vs-put-object/
-
-        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/put_object.html
-
-        https://saturncloud.io/blog/flask-upload-image-to-s3-without-saving-to-local-file-system/'
       parameters:
       - in: formData
         name: title
-        required: true
-        schema:
-          type: string
-      - in: formData
-        name: added_at
         required: true
         schema:
           type: string
@@ -448,6 +461,7 @@ paths:
         name: completed
         required: false
         schema:
+          default: 0
           enum:
           - 0
           - 1
@@ -456,6 +470,7 @@ paths:
         name: bookmarked
         required: false
         schema:
+          default: 0
           enum:
           - 0
           - 1
@@ -464,6 +479,7 @@ paths:
         name: active
         required: false
         schema:
+          default: 0
           enum:
           - 0
           - 1
@@ -485,10 +501,7 @@ paths:
           $ref: '#/components/responses/UNPROCESSABLE_ENTITY'
         default:
           $ref: '#/components/responses/DEFAULT_ERROR'
-      summary: '- compress before upload, no S3 feature
-
-        - use book_file.read() to get byte stream of <class ''werkzeug.datastructures.FileStorage''>
-        for upload without saving'
+      summary: add book
       tags:
       - Books
   /login:
