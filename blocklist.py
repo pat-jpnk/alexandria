@@ -1,2 +1,0 @@
-
-BLOCKED_JWT = set()

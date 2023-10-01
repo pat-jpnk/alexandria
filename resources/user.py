@@ -6,11 +6,12 @@ from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 import link_id as lid
-from blocklist import BLOCKED_JWT
 from db import db
 from models import UserModel
 from schemas import (PlainUserSchema, UserLoginSchema, UserSchema,
                      UserSearchQueryArgs, UserUpdateSchema)
+
+from redis_client import redis_client
 
 blp = Blueprint("Users", __name__, description="User resource")           
 
@@ -39,7 +40,12 @@ class LoginRefresh(MethodView):
         current_user = get_jwt_identity()                                       # returns "sub" claim
         new_token = create_access_token(identity=current_user, fresh=False)
         jti = get_jwt().get("jti")
-        BLOCKED_JWT.add(jti)
+        try:
+            redis_client.sadd("blocked_jwt", jti)       # TODO: decide if use SET name constant
+        except redis.exceptions.RedisError as e:
+             # TODO: log error e
+             # TODO: determine how to handle
+
         return {"access_token": new_token}
 
 @blp.route("/logout") 
@@ -48,7 +54,12 @@ class UserLogout(MethodView):
     def post(self):
         """logout user"""
         jti = get_jwt()["jti"]
-        BLOCKED_JWT.add(jti)
+        try:
+            redis_client.sadd("blocked_jwt", jti)
+        except redis.exceptions.RedisError as e:
+             # TODO: log error e
+             # TODO: determine how to handle
+             
         return {"message:": "successfully logged out"}
 
 
