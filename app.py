@@ -11,6 +11,7 @@ from resources.book import blp as BookBlueprint
 from resources.tag import blp as TagBlueprint
 from resources.user import blp as UserBlueprint
 
+from resources.user import get_user_admin
 
 def create_app(development_db = None):
 
@@ -86,24 +87,25 @@ def create_app(development_db = None):
             401
         )
 
+    @jwt.additional_claims_loader
+    def add_claims_to_jwt(identity):
+        is_admin = get_user_admin(identity)
+
+        return {
+            "admin": is_admin
+        }
+
     return app
 
 
 '''
-    @jwt.additional_claims_loader
-    def add_claims_to_jwt(identity):
-        if identity == 1:
-            pass
-        else:
-            pass
             
 from flask_jwt_extended import get_jwt
             
 in method:
 
 jwt = get_jwt()
-
-if not jwt.get("is_admin):
+if not jwt.get("admin"):
     abort(401, message="admin privilege is required")
 
 '''

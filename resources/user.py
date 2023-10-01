@@ -14,6 +14,7 @@ from schemas import (PlainUserSchema, UserLoginSchema, UserSchema,
 
 blp = Blueprint("Users", __name__, description="User resource")
 
+
 @blp.route("/login")
 class UserLogin(MethodView):
     @blp.arguments(UserLoginSchema)
@@ -102,6 +103,11 @@ class User(MethodView):
     @blp.alt_response(404, description="user not found")
     def delete(self, user_id):
         """delete user"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         user = UserModel.query.filter_by(link_id = user_id).first()    
 
         if user:
@@ -122,6 +128,7 @@ class User(MethodView):
     @blp.alt_response(404, description="user not found")
     def put(self, user_data, user_id):
         """modify user"""
+        # TODO: USERS CAN ONLY MODIFY THEMSELVES, test
         user = UserModel.query.filter_by(link_id = user_id).first()   
 
         if user:
@@ -154,3 +161,16 @@ class UserList(MethodView):
             result = result.filter(UserModel.user_name.contains(search_value.get("name")))
 
         return result
+
+
+# used in @jwt.additional_claims_loader, user not existing should not occur
+# but is handled as False
+# https://flask-jwt-extended.readthedocs.io/en/stable/add_custom_data_claims.html
+
+def get_user_admin(user_id):
+    user = UserModel.query.filter_by(link_id = user_id).first()    
+
+    if not user:
+        return False
+    
+    return user.is_admin

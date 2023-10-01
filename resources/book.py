@@ -47,6 +47,11 @@ class Book(MethodView):
     @blp.alt_response(404, description="book not found")
     def delete(self, book_id):
         """delete book"""
+        jwt = get_jwt()
+
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         book = BookModel.query.filter_by(link_id = book_id).first()
 
         if book:
@@ -82,6 +87,11 @@ class Book(MethodView):
     @blp.alt_response(404, description="book not found")
     def put(self, book_data, book_id):           
         """modify book"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         book = BookModel.query.filter_by(link_id = book_id).first()    
 
         if book:
@@ -153,6 +163,12 @@ class BookFile(MethodView):
     #@blp.alt_response()
     @blp.arguments(MultipartFileSchema, location="files")
     def put(self, files, book_id):
+        """modify book file"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         book_file = files["file"]                       # <class 'werkzeug.datastructures.FileStorage'>
 
         '''check file size'''
@@ -258,7 +274,10 @@ class BookList(MethodView):
     @blp.response(201, BookSchema, description="created - book created")
     def post(self, book_data, files): 
         """add book"""
+        jwt = get_jwt()
         
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
 
         # https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
 
@@ -294,10 +313,8 @@ class BookList(MethodView):
         else:
             abort(422, message="error, file type indeterminate")
 
-
         '''compress file'''
         book_file = gzip.compress(book_file.read())
-
 
         '''get MD5'''
         import hashlib  # TODO: move top
@@ -348,6 +365,11 @@ class BookTags(MethodView):
     @blp.alt_response(404, description="tag not found")
     def post(self, tag_id, book_id):
         """create relation between book and tag"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         book = BookModel.query.filter_by(link_id = book_id).first()
         tag = TagModel.query.filter_by(link_id = tag_id).first()    
     
@@ -372,6 +394,11 @@ class BookTags(MethodView):
     @blp.alt_response(404, description="no relation found for book and tag")
     def delete(self, tag_id, book_id):
         """delete relation between book and tag"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         book = BookModel.query.filter_by(link_id = book_id).first()
         tag = TagModel.query.filter_by(link_id = tag_id).first()    
     

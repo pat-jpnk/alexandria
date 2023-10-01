@@ -38,6 +38,11 @@ class Tag(MethodView):
     @blp.alt_response(404, description="tag not found")
     def delete(self, tag_id):
         """delete tag"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         tag = TagModel.query.filter_by(link_id = tag_id).first()  
 
         if tag:
@@ -57,7 +62,13 @@ class Tag(MethodView):
     @blp.alt_response(409, description="database constraint violation")
     @blp.alt_response(404, description="tag not found")
     def put(self, tag_data, tag_id): 
-        """modify tag"""                           # made idempotent, why ? (https://www.rfc-editor.org/rfc/rfc9110#PUT)
+        """modify tag"""               
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+        
+                    # made idempotent, why ? (https://www.rfc-editor.org/rfc/rfc9110#PUT)
         #tag = TagModel.query.get(tag_id)              # if we allow creation with user supplied id, user determines id, if we generate id randomly
       
         tag = TagModel.query.filter_by(link_id = tag_id).first()  
@@ -106,6 +117,11 @@ class TagList(MethodView):
     @blp.alt_response(409, description="database constraint violation")
     def post(self, tag_data):
         """add tag"""
+        jwt = get_jwt()
+        
+        if not jwt.get("admin"):
+            abort(401, message="admin privilege is required")
+
         tag_data["link_id"] = lid.get_link_id()
         tag = TagModel(**tag_data)      # turn dict into keyword arguments
 
