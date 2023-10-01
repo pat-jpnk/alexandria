@@ -1,5 +1,5 @@
 from flask.views import MethodView
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -14,7 +14,7 @@ blp = Blueprint("Tags", __name__, description="Tag resource")
 
 @blp.route("/tag/<string:tag_id>")
 class Tag(MethodView):
-    #@jwt_required()
+    @jwt_required()
     @blp.response(200, TagSchema, description="success - tag found")
     @blp.alt_response(404, description="tag not found")
     def get(self, tag_id):
@@ -97,7 +97,7 @@ class Tag(MethodView):
 
 @blp.route("/tags")
 class TagList(MethodView):
-    #@jwt_required() 
+    @jwt_required() 
     @blp.arguments(TagSearchQueryArgs, location="query")
     @blp.response(200, TagSchema(many=True),  description="success - tags found")
     def get(self, search_value):
@@ -111,7 +111,7 @@ class TagList(MethodView):
 
         return result
         
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.arguments(PlainTagSchema)
     @blp.response(201, TagSchema,  description="created - tag created")
     @blp.alt_response(409, description="database constraint violation")

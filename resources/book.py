@@ -7,7 +7,7 @@ import sqlalchemy.sql as sql
 from flask import Response
 from flask import current_app as app
 from flask.views import MethodView
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt
 from flask_smorest import Blueprint, abort, Page # *  # TODO: test if sufficient  
 from flask_smorest.fields import Upload
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -30,7 +30,7 @@ class CursorPage(Page):
 
 @blp.route("/book/<string:book_id>")
 class Book(MethodView):
-    #@jwt_required()
+    @jwt_required()
     @blp.response(200, BookSchema)
     @blp.alt_response(404, description="book not found")
     def get(self, book_id):
@@ -42,7 +42,7 @@ class Book(MethodView):
   
         return book
 
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.response(204, description="accepted - book deleted")
     @blp.alt_response(404, description="book not found")
     def delete(self, book_id):
@@ -116,7 +116,7 @@ class Book(MethodView):
 
 @blp.route("/book/<string:book_id>/file")
 class BookFile(MethodView):
-    #@jwt_required()
+    @jwt_required()
     @blp.response(200)
     @blp.alt_response(404, description="book not found")
     def get(self, book_id):
@@ -158,7 +158,7 @@ class BookFile(MethodView):
         else:
             abort(404, message="error, book not found")
 
-    #@jwt_required()
+    @jwt_required()
     @blp.response(204, description="success, file modified")
     #@blp.alt_response()
     @blp.arguments(MultipartFileSchema, location="files")
@@ -241,7 +241,7 @@ class BookFile(MethodView):
 
 @blp.route("/books")
 class BookList(MethodView):
-    #@jwt_required()
+    @jwt_required()
     @blp.arguments(BookSearchQueryArgs, location="query")
     @blp.response(200, BookSchema(many=True))
     @blp.paginate(CursorPage)
@@ -268,7 +268,7 @@ class BookList(MethodView):
         return result
 
     
-    #@jwt_required(fresh=True) 
+    @jwt_required(fresh=True) 
     @blp.arguments(PlainBookSchema, location="form")
     @blp.arguments(MultipartFileSchema, location="files")
     @blp.response(201, BookSchema, description="created - book created")
@@ -359,7 +359,7 @@ class BookList(MethodView):
 
 @blp.route("/book/<string:book_id>/tag/<string:tag_id>")
 class BookTags(MethodView):
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.response(201, BookSchema, description="created - book tag relation created")
     @blp.alt_response(404, description="book not found")
     @blp.alt_response(404, description="tag not found")
@@ -387,7 +387,7 @@ class BookTags(MethodView):
         
         return book
 
-    #@jwt_required(fresh=True)
+    @jwt_required(fresh=True)
     @blp.response(202, description="accepted - book tag relation deleted")
     @blp.alt_response(404, description="book not found")
     @blp.alt_response(404, description="tag not found")

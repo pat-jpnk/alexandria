@@ -12,7 +12,7 @@ from models import UserModel
 from schemas import (PlainUserSchema, UserLoginSchema, UserSchema,
                      UserSearchQueryArgs, UserUpdateSchema)
 
-blp = Blueprint("Users", __name__, description="User resource")
+blp = Blueprint("Users", __name__, description="User resource")           
 
 
 @blp.route("/login")
@@ -148,7 +148,7 @@ class User(MethodView):
 
 @blp.route("/users")
 class UserList(MethodView):
-    #@jwt_required()
+    @jwt_required()
     @blp.arguments(UserSearchQueryArgs, location="query")
     @blp.response(200, PlainUserSchema(many=True), description="success - users found")
     def get(self, search_value):
