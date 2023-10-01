@@ -7,8 +7,9 @@ import sqlalchemy.sql as sql
 from flask import Response
 from flask import current_app as app
 from flask.views import MethodView
-from flask_jwt_extended import jwt_required, get_jwt
-from flask_smorest import Blueprint, abort, Page # *  # TODO: test if sufficient  
+from flask_jwt_extended import get_jwt, jwt_required
+from flask_smorest import (Blueprint, Page,  # *  # TODO: test if sufficient
+                           abort)
 from flask_smorest.fields import Upload
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.utils import secure_filename
@@ -317,7 +318,6 @@ class BookList(MethodView):
         book_file = gzip.compress(book_file.read())
 
         '''get MD5'''
-        import hashlib  # TODO: move top
         book_file_md5 = hashlib.md5(book_file).hexdigest()
 
         '''upload file'''

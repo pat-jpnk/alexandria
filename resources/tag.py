@@ -1,5 +1,5 @@
 from flask.views import MethodView
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import get_jwt, jwt_required
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -73,14 +73,13 @@ class Tag(MethodView):
       
         tag = TagModel.query.filter_by(link_id = tag_id).first()  
         if tag:                                             # then the request is not idempotent anymore
-            print(tag_data) # TODO: remove
             tag.tag = tag_data["tag"]
 
             try:
                 db.session.add(tag)
                 db.session.commit()
             except IntegrityError:
-                abort(409, message="error, database constraint violation occured")      # TODO: add more info, justify 409
+                abort(409, message="error, database constraint violation occured")  
             except SQLAlchemyError:
                 abort(500, message="error occured during tag insertion")
         else:

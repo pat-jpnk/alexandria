@@ -36,7 +36,7 @@ class LoginRefresh(MethodView):
     @jwt_required(refresh=True)
     def post(self):
         """refresh JWT"""
-        current_user = get_jwt_identity()   # return "sub" claim
+        current_user = get_jwt_identity()                                       # returns "sub" claim
         new_token = create_access_token(identity=current_user, fresh=False)
         jti = get_jwt().get("jti")
         BLOCKED_JWT.add(jti)

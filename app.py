@@ -10,8 +10,8 @@ from db import db
 from resources.book import blp as BookBlueprint
 from resources.tag import blp as TagBlueprint
 from resources.user import blp as UserBlueprint
-
 from resources.user import get_user_admin
+
 
 def create_app(development_db = None):
 

@@ -24,12 +24,12 @@ def test_add_book(api_session):
     }
     response = api_session.post(url, files=files, json=params)
     assert_status_code(response, 201)
-
+    pytest.book_id = response.json().get("link_id")
 
 # list single book
 @pytest.mark.dependency(depends=["test_add_book"])
 def test_add_book(api_session):
-    path = "/books/"
+    path = "/books/" + pytest.book_id
     url = SCHEME + DOMAIN + PORT + path
     response = api_session.get(url)
     assert_status_code(response, 200)
