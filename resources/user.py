@@ -8,10 +8,9 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import link_id as lid
 from db import db
 from models import UserModel
+from redis_client import redis_client
 from schemas import (PlainUserSchema, UserLoginSchema, UserSchema,
                      UserSearchQueryArgs, UserUpdateSchema)
-
-from redis_client import redis_client
 
 blp = Blueprint("Users", __name__, description="User resource")           
 
@@ -59,7 +58,7 @@ class UserLogout(MethodView):
         except redis.exceptions.RedisError as e:
              # TODO: log error e
              # TODO: determine how to handle
-             
+
         return {"message:": "successfully logged out"}
 
 

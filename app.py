@@ -28,13 +28,9 @@ def create_app(development_db = None):
     app.config["OPENAPI_SWAGGER_UI_URL"] = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@3.25.x/"
     app.config["SQLALCHEMY_DATABASE_URI"] = development_db or getenv("DATABASE")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    app.config["JWT_SECRET_KEY"] = getenv("JWT_SECRET_KEY")                        # used to sign JWT, confirms generation by this app, is not encryption, against tampering
-                                                                                   # secrets.SystemRandom().getrandbits(128) 
-
-
+    app.config["JWT_SECRET_KEY"] = getenv("JWT_SECRET_KEY")                                         # used to sign JWT, confirms generation by this app, is not encryption, against tampering / secrets.SystemRandom().getrandbits(128) 
     app.config["FILE_FORMATS"] = ["application/pdf", "application/epub+zip"]
-    app.config["MAX_FILE_SIZE"] = 300000000                                         # 300 MB in bytes
+    app.config["MAX_FILE_SIZE"] = 300000000                                                         # 300 MB in bytes
     app.config["AWS_S3_BUCKET_URL"] = "https://s3-eu-central-1.amazonaws.com/alexandria-api"
 
 
@@ -100,19 +96,6 @@ def create_app(development_db = None):
         }
 
     return app
-
-
-'''
-            
-from flask_jwt_extended import get_jwt
-            
-in method:
-
-jwt = get_jwt()
-if not jwt.get("admin"):
-    abort(401, message="admin privilege is required")
-
-'''
 
     #with app.app_context(): # todo: look up if better alternative
     #    db.create_all()
