@@ -80,6 +80,7 @@ def create_app(development_db = None):
         except redis.exceptions.RedisError as e:
             # TODO: log error e
             # TODO: determine how to handle
+            pass
         return result      
 
     @jwt.revoked_token_loader
