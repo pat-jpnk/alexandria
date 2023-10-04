@@ -14,3 +14,4 @@ redis
 crockford32
 boto3
 isort
+fluent-logger

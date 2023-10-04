@@ -49,4 +49,7 @@ def test_delete_user(api_session):
 # logout user 
 @pytest.mark.dependency()
 def test_logout_user():
-    pass
+    pass        
+
+
+    
