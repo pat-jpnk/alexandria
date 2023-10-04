@@ -22,8 +22,12 @@ class UserLogin(MethodView):
     def post(self, user_data):
         """login user"""
         user = UserModel.query.filter(UserModel.user_name == user_data["user_name"]).first()
+        verified_email = user.verified_email
 
-        if user and pbkdf2_sha256.verify(user_data["user_password"], user.user_password):
+        if not verified_email:
+            abort(401, message="denied, user email not verified")
+
+        if user pbkdf2_sha256.verify(user_data["user_password"], user.user_password):
             access_token = create_access_token(identity=user.id, fresh=True)                        
             refresh_token = create_refresh_token(identity=user.id)
             return {"access_token": access_token, "refresh_token": refresh_token}

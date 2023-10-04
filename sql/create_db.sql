@@ -10,7 +10,8 @@ CREATE TABLE Users (
     user_name TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     user_password TEXT NOT NULL,
-    is_admin BOOLEAN NOT NULL
+    is_admin BOOLEAN NOT NULL,
+    verified_email BOOLEAN NOT NULL
 );
 
 -- books 
@@ -25,7 +26,7 @@ CREATE TABLE Books (
     bookmarked INTEGER NOT NULL CHECK (bookmarked IN (0,1)) DEFAULT 0,
     active INTEGER NOT NULL CHECK (active IN (0,1)) DEFAULT 0,
     file_url TEXT DEFAULT '',
-    mime_type TEXT
+    mime_type TEXT NOT NULL
 );
 
 
@@ -48,6 +49,16 @@ CREATE TABLE Booktags (
     FOREIGN KEY(tag_id) REFERENCES Tag(id),
     PRIMARY KEY(tag_id, book_id)
 );
+
+
+CREATE TABLE Access_codes (
+    id INTEGER PRIMARY KEY,
+    link_id TEXT UNIQUE NOT NULL, 
+    created_at = TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M', 'NOW', 'localtime')),
+    deactivated_at = TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M', 'NOW', 'localtime')),
+    access_code TEXT UNIQUE NOT NULL,
+    active INTEGER NOT NULL CHECK (completed IN (0,1)) DEFAULT 0
+)
 
 
 -- authors 
