@@ -9,8 +9,10 @@ import link_id as lid
 from db import db
 from models import UserModel
 from redis_client import redis_client
-from schemas import (PlainUserSchema, UserLoginSchema, UserSchema,
+from schemas import (PlainUserSchema, UserLoginSchema, UserRegisterSchema,
                      UserSearchQueryArgs, UserUpdateSchema)
+
+#from resources.access_code import deactivate_access_code
 
 blp = Blueprint("Users", __name__, description="User resource")           
 
@@ -23,14 +25,14 @@ class UserLogin(MethodView):
         """login user"""
         user = UserModel.query.filter(UserModel.user_name == user_data["user_name"]).first()
         
-        if not verified_email:
-            abort(401, message="denied, user email not verified")
+        #if not verified_email:
+        #    abort(401, message="denied, user email not verified")
 
         if user and pbkdf2_sha256.verify(user_data["user_password"], user.user_password):
-            verified_email = user.verified_email    
+            #verified_email = user.verified_email    
 
-            if not verified_email:
-                abort(401, message="denied, user email not verified")
+            #if not verified_email:
+            #    abort(401, message="denied, user email not verified")
             
             access_token = create_access_token(identity=user.id, fresh=True)                        
             refresh_token = create_refresh_token(identity=user.id)
@@ -74,11 +76,21 @@ class UserLogout(MethodView):
 
 @blp.route("/register")
 class UserRegister(MethodView):
-    @blp.arguments(UserSchema)
+    @blp.arguments(UserRegisterSchema)
     @blp.response(201, PlainUserSchema, description="created - user created")
     @blp.alt_response(409, description="error, database constraint violation occured")
     def post(self, user_data):
         """register user"""
+
+        #access_code = user_data["access_code"]
+        '''
+        access_code = AccessCodeModel.query.filter_by(access_code == user_data["access_code"]).first()
+        if not access_code:
+            abort(401, message="invalid access code")
+        
+        access_code.active = False
+        '''
+
         if UserModel.query.filter(UserModel.user_name == user_data["user_name"]).first():
             abort(409, message="duplicate username")
 
@@ -97,10 +109,19 @@ class UserRegister(MethodView):
             db.session.add(user)
             db.session.commit()
         except IntegrityError as e:
-            print(e)
             abort(409, message="error, database constraint violation occured")
         except SQLAlchemyError:
             abort(500, message="error occured during user registration")
+
+        '''
+        try:
+            db.session.add(access_code)
+            db.session.commit()
+        except IntegrityError:
+            abort(409, message="error, database constraint violation occured") 
+        except SQLAlchemyError:
+            abort(500, message="error occured during access code deactivation")    
+        '''
 
         return {"message": "user registered successfully"}, 201
 

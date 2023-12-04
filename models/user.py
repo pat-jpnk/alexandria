@@ -9,4 +9,4 @@ class UserModel(db.Model):
     email = db.Column(db.String(128), unique=True, nullable=False)
     user_password = db.Column(db.String(128), unique=False, nullable=False)
     is_admin = db.Column(db.Boolean, unique=False, nullable=False)
-    verified_email = db.Column(db.Boolean, nullable=False)
+    #verified_email = db.Column(db.Boolean, nullable=False)

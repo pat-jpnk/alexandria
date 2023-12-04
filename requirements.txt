@@ -3,7 +3,7 @@ pytest-mock
 pytest-dependency
 pylint
 requests
-flask 
+Flask==2.2.2
 flask-smorest
 python-dotenv
 marshmallow
@@ -15,3 +15,5 @@ crockford32
 boto3
 isort
 fluent-logger
+filetype
+werkzeug==2.3.8

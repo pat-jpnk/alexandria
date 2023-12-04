@@ -1,6 +1,5 @@
 -- alexandria database 1.0
 
--- PRAGMA foreign_keys = ON;
 
 -- users 
 

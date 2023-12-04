@@ -2,9 +2,6 @@ import pytest
 import requests
 from test_utils import DOMAIN, PORT, SCHEME, api_session, assert_status_code
 
-SCHEME = "http://"
-DOMAIN = "127.0.0.1"
-PORT = ":5000" 
 
 def pytest_namespace():
     return {"user_id": None}
@@ -14,7 +11,7 @@ def pytest_namespace():
 def test_login_user():
     path = "/login"
     url = SCHEME + DOMAIN + PORT + path
-    params = {"user_name": "", "user_password": ""}
+    params = {"user_name": "testname", "user_password": "testpassword"}
     response = api_session.post(url, json=params)
     assert_status_code(response, 200)
 
@@ -49,7 +46,8 @@ def test_delete_user(api_session):
 # logout user 
 @pytest.mark.dependency()
 def test_logout_user():
-    pass        
+    path = "/logout"
+    url = SCHEME + DOMAIN + PORT + path       
 
 
     

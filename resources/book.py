@@ -185,7 +185,7 @@ class BookFile(MethodView):
             abort(400, message="error, Content-Type header required")
 
 
-        file_type = filetype.guess(book_file.read())
+        file_type = filetype.guess(book_file.read()) # TODO: try, catch typeError
         book_file.seek(0)
 
         if file_type:

@@ -9,7 +9,7 @@ from db import db
 from resources.book import blp as BookBlueprint
 from resources.tag import blp as TagBlueprint
 from resources.user import blp as UserBlueprint
-from resources.access_code import blp as AccessCodeBlueprint
+#from resources.access_code import blp as AccessCodeBlueprint
 from resources.user import get_user_admin
 
 from redis_client import redis_client
@@ -43,7 +43,7 @@ def create_app(development_db = None):
     api.register_blueprint(BookBlueprint)
     api.register_blueprint(UserBlueprint)
     api.register_blueprint(TagBlueprint)
-    api.register_blueprint(AccessCodeBlueprint)
+    #api.register_blueprint(AccessCodeBlueprint)
 
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):

@@ -38,8 +38,9 @@ class PlainUserSchema(Schema):
     email = fields.Email(required=True, validate=validate.Email())
     is_admin = fields.Int(validate=validate.OneOf([0,1]), load_default=False)
 
-class UserSchema(PlainUserSchema):
+class UserRegisterSchema(PlainUserSchema):
     user_password = fields.Str(required=True, load_only=True) 
+    #access_code = fields.Str(required=True, load_only=True)
 
 class UserUpdateSchema(Schema):
     email = fields.Email(required=True, validate=validate.Email())
